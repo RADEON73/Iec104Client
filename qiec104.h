@@ -5,9 +5,8 @@
 #include <qlist.h>
 #include <qobject.h>
 #include <qobjectdefs.h>
-#include <qsslerror.h>
-#include <qsslsocket.h>
 #include <qstring.h>
+#include <qtcpsocket.h>
 #include <qtimer.h>
 #include <qvector.h>
 
@@ -22,16 +21,10 @@ public:
     int ForcePrimary;    // 1 = force primary (cant't stay secondary) , 0 = can be
     // secondary
     QTimer* tmKeepAlive; // 1 second timer
-    QSslSocket* tcps;    // socket for iec104 (tcp)
+    QTcpSocket* tcps;    // socket for iec104 (tcp)
     void terminate();
     void disable_connect();
     void enable_connect();
-    // TLS Configuration Setters
-    void setTlsEnabled(bool enabled);
-    void setCaCertPath(const QString& path);
-    void setLocalCertPath(const QString& path);
-    void setPrivateKeyPath(const QString& path);
-    void setPeerVerifyMode(QSslSocket::PeerVerifyMode mode);
 
 signals:
     void signal_dataIndication(const QVector<iec_obj>& objects);
@@ -43,15 +36,13 @@ signals:
 
 public slots:
     void slot_tcpdisconnect(); // tcp disconnect for iec104
-    void slot_modeChanged(QSslSocket::SslMode mode);
+    //void slot_modeChanged(QSslSocket::SslMode mode);
 
 private slots:
     void slot_tcpconnect();     // tcp connect for iec104
     void slot_tcpreadytoread(); // ready to read data on iec104 tcp socket
     void slot_tcperror(QAbstractSocket::SocketError socketError); // show errors of tcp
     void slot_keep_alive();
-    void slot_sslErrors(const QList<QSslError>& errors); // Slot for SSL errors
-    void slot_socketEncrypted();
     void slot_socketError(QAbstractSocket::SocketError);
 
 private:
@@ -72,11 +63,4 @@ private:
     bool mAllowConnect;
     int mConnectAttemptCounter;
     unsigned int mKeepAliveCounter;
-
-    // TLS Configuration Members
-    bool mUseTls = false;
-    QString mCaCertPath;
-    QString mLocalCertPath;
-    QString mPrivateKeyPath;
-    QSslSocket::PeerVerifyMode mVerifyMode = QSslSocket::VerifyNone; // Default to no verification for ease of testing initially
 };

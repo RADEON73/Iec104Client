@@ -20,10 +20,9 @@
 #include "iec104_types.h"
 #include "qiec104.h"
 
-#define QTESTER_VERSION "v3.1.0"
-#define QTESTER_COPYRIGHT "© 2010-present Ricardo Lastra Olsen"
-#define CURDIRINIFILENAME "/qtester104.ini"
-#define CONFDIRINIFILENAME "../conf/qtester104.ini"
+constexpr auto QTESTER_VERSION = "v3.1.0";
+constexpr auto CURDIRINIFILENAME = "/qtester104.ini";
+constexpr auto CONFDIRINIFILENAME = "../conf/qtester104.ini";
 
 namespace Ui
 {
@@ -64,7 +63,6 @@ private slots:
     void on_pbCopyVals_clicked(); // copy values table to clipboard
     void on_cbTheme_currentIndexChanged(int index); // Theme selection changed
 
-    void on_cbEnableTls_stateChanged(int arg1);
     void on_cb888Mode_stateChanged(int arg1);
 
 private:

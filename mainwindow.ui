@@ -504,13 +504,6 @@ If empty will use remote link address.</string>
       </item>
      </widget>
     </item>
-    <item row="2" column="0">
-     <widget class="QCheckBox" name="cbEnableTls">
-      <property name="text">
-       <string>TLS</string>
-      </property>
-     </widget>
-    </item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menuBar">

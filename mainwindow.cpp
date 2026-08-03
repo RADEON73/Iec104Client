@@ -148,12 +148,6 @@ MainWindow::MainWindow(const QString& iniPath,
     QSettings settings(ininame, QSettings::IniFormat);
     const QString rtuPrefix = RtuSection + "/";
 
-    QString useTls = settings.value(rtuPrefix + "USE_TLS", "0").toString().trimmed();
-    QString caCertPath = settings.value(rtuPrefix + "CA_CERT_PATH", "").toString();
-    QString localCertPath = settings.value(rtuPrefix + "LOCAL_CERT_PATH", "").toString();
-    QString privateKeyPath = settings.value(rtuPrefix + "PRIVATE_KEY_PATH", "").toString();
-    QString verifyPeer = settings.value(rtuPrefix + "VERIFY_PEER", "0").toString().trimmed();
-
     PrimaryAddress = settings.value("IEC104/PRIMARY_ADDRESS", 1).toInt();
     ForcePrimary = settings.value("I104M/FORCE_PRIMARY", 0).toInt();
     SecondaryAddress = settings.value(rtuPrefix + "SECONDARY_ADDRESS", 1).toInt();
@@ -165,8 +159,6 @@ MainWindow::MainWindow(const QString& iniPath,
     SecondaryIp = IPEscravo;
     ProtocolPort = settings.value(rtuPrefix + "TCP_PORT", ProtocolPort).toUInt();
     const unsigned giPeriod = settings.value(rtuPrefix + "GI_PERIOD", 330).toUInt();
-    const QSslSocket::PeerVerifyMode verifyMode =
-        verifyPeer != "0" ? QSslSocket::AutoVerifyPeer : QSslSocket::QueryPeer;
 
     // this is for using with the OSHMI HMI in a dual architecture
     QSettings settings_oshmi("../conf/hmi.ini", QSettings::IniFormat);
@@ -183,12 +175,6 @@ MainWindow::MainWindow(const QString& iniPath,
         statusBar()->hide();
     }
     on_cb888Mode_stateChanged(ui->cb888Mode->isChecked());
-
-    // TLS checkbox visibility logic
-    if (ui->cbEnableTls) {
-        ui->cbEnableTls->setVisible(useTls != "0");
-        ui->cbEnableTls->setChecked(useTls != "0");
-    }
 
     if (ui->cbLog->isChecked()) {
         QDate dt = QDate::currentDate();
@@ -262,11 +248,6 @@ MainWindow::MainWindow(const QString& iniPath,
         &MainWindow::slot_commandActRespIndication);
 
     queueProtocolCall([=](QIec104* worker) {
-        worker->setTlsEnabled(useTls != "0");
-        worker->setCaCertPath(caCertPath);
-        worker->setLocalCertPath(localCertPath);
-        worker->setPrivateKeyPath(privateKeyPath);
-        worker->setPeerVerifyMode(verifyMode);
         worker->setPrimaryAddress(PrimaryAddress);
         worker->ForcePrimary = ForcePrimary;
         worker->setSecondaryAddress(SecondaryAddress);
@@ -314,8 +295,7 @@ MainWindow::MainWindow(const QString& iniPath,
         ui->lbMode->setText("<font color='green'>Primary</font>");
     }
 
-    ui->lbCopyright->setText(QString(QTESTER_VERSION) + QString(" - ") +
-        QString(QTESTER_COPYRIGHT));
+    ui->lbCopyright->setText(QString(QTESTER_VERSION) + " - ");
 
     QFont font = QFont("Consolas");
     font.setStyleHint(QFont::Monospace);
@@ -359,29 +339,12 @@ void MainWindow::on_pbConnect_clicked()
         SecondaryAddress = ui->leLinkAddress->text().toInt();
         PrimaryAddress = ui->leMasterAddress->text().toInt();
 
-        /* // --- Apply TLS Settings from UI ---
-        // (Assuming UI elements like ui->cbUseTls exist)
-        bool useTls = ui->cbEnableTls->isChecked();
-        QString caCertPath = ui->leCaCertPath->text();
-        QString localCertPath = ui->leLocalCertPath->text();
-        QString privateKeyPath = ui->lePrivateKeyPath->text();
-        bool verifyPeer = ui->cbVerifyPeer->isChecked();
-
-        i104.setTlsEnabled(useTls);
-        i104.setCaCertPath(caCertPath);
-        i104.setLocalCertPath(localCertPath);
-        i104.setPrivateKeyPath(privateKeyPath);
-        i104.setPeerVerifyMode(verifyPeer ? QSslSocket::VerifyPeer : QSslSocket::VerifyNone); // Adjust if using QueryPeer etc.
-        */
-
-        const bool tlsEnabled = ui->cbEnableTls->isChecked();
         queueProtocolCall([=](QIec104* worker) {
             worker->setSecondaryIP(
                 const_cast<char*>(SecondaryIp.toStdString().c_str()));
             worker->setPortTCP(ProtocolPort);
             worker->setSecondaryAddress(SecondaryAddress);
             worker->setPrimaryAddress(PrimaryAddress);
-            worker->setTlsEnabled(tlsEnabled);
             });
 
         QString qs;
@@ -1819,14 +1782,6 @@ void MainWindow::on_cbTheme_currentIndexChanged(int index)
         sp.setColor(QPalette::Text, Qt::black);
         qApp->setPalette(sp);
     }
-}
-
-void MainWindow::on_cbEnableTls_stateChanged(int arg1)
-{
-    Q_UNUSED(arg1);
-    queueProtocolCall([enabled = ui->cbEnableTls->isChecked()](QIec104* worker) {
-        worker->setTlsEnabled(enabled);
-        });
 }
 
 void MainWindow::on_cb888Mode_stateChanged(int arg1)
