@@ -1,0 +1,118 @@
+#include "logmsg.h"
+
+#include <ctime>
+#include <qmutex.h>
+#include <string>
+
+using namespace std;
+
+TLogMsg::TLogMsg()
+{
+    mMaxMsg = 1000;
+    mDoLog = true;
+    mRegTime = false;
+    mLastTime = 0;
+    mLevel = 0;
+}
+
+void TLogMsg::setMaxMsg(unsigned int maxmsg)
+{
+    QMutexLocker locker(&mMutex);
+    mMaxMsg = maxmsg;
+}
+
+void TLogMsg::setLevel(unsigned int level)
+{
+    QMutexLocker locker(&mMutex);
+    mLevel = level;
+}
+
+void TLogMsg::activateLog()
+{
+    QMutexLocker locker(&mMutex);
+    mDoLog = true;
+}
+
+void TLogMsg::deactivateLog()
+{
+    QMutexLocker locker(&mMutex);
+    mLstLog.clear(); // clean lists
+    mLstTime.clear();
+    mDoLog = false;
+}
+
+void TLogMsg::doLogTime()
+{
+    QMutexLocker locker(&mMutex);
+    mLstLog.clear(); // clean lists, sync
+    mLstTime.clear();
+    mRegTime = true;
+}
+
+void TLogMsg::dontLogTime()
+{
+    QMutexLocker locker(&mMutex);
+    mRegTime = false;
+}
+
+bool TLogMsg::haveMsg()
+{
+    QMutexLocker locker(&mMutex);
+    return !mLstLog.empty();
+}
+
+bool TLogMsg::isLogging()
+{
+    QMutexLocker locker(&mMutex);
+    return mDoLog;
+}
+
+// coloca a mensagem na fila
+void TLogMsg::pushMsg( const char * msg, unsigned int level )
+{
+    QMutexLocker locker(&mMutex);
+    if ( mDoLog && ( mLstLog.size() < mMaxMsg ) && ( mLevel <= level ) ) {
+        mLstLog.push_back( msg );
+        if ( mRegTime ) { // coloca hora na fila, se for o caso
+            mLstTime.push_back( time( NULL ) );
+        }
+    }
+}
+
+int TLogMsg::count()
+{
+    QMutexLocker locker(&mMutex);
+    return int(mLstLog.size());
+}
+
+// Tira mensagem da fila
+string TLogMsg::pullMsg()
+{
+    QMutexLocker locker(&mMutex);
+    if ( mLstLog.empty() || !mDoLog )
+        return "";
+
+    string s = mLstLog.front();   // pega a primeira da fila
+    mLstLog.pop_front();          // retira-a da fila
+
+    // se tem registro de hora, pega a hora e formata para exibir antes da mensagem
+    if (mRegTime){
+        char buffer [201];
+        time_t hora = mLstTime.front();
+        mLstTime.pop_front();
+        if (hora != mLastTime)
+          {
+          struct tm * timeinfo;
+          timeinfo = localtime ( &hora );
+          // strftime ( buffer,200,"%d/%m %H:%M:%S ",timeinfo );
+          strftime ( buffer,200,"%H:%M:%S ",timeinfo );
+          s = buffer + s;
+          }
+        else
+          s = "         " + s;
+        mLastTime = hora;
+    }
+
+    return s;
+}
+

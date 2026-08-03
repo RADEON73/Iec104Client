@@ -1,0 +1,17 @@
+#include <qapplication.h>
+#include <qmetatype.h>
+#include <qvector.h>
+#include "appwindow.h"
+#include "iec104_class.h"
+#include <qnetworkproxy.h>
+
+int main(int argc, char* argv[])
+{
+    QApplication a(argc, argv);
+    QNetworkProxy::setApplicationProxy(QNetworkProxy::NoProxy);
+    qRegisterMetaType<iec_obj>("iec_obj");
+    qRegisterMetaType<QVector<iec_obj>>("QVector<iec_obj>");
+    AppWindow w;
+    w.show();
+    return a.exec();
+}
