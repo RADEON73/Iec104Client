@@ -1,10 +1,9 @@
 #pragma once
-#include <cstdint>
 #include <functional>
 #include <map>
 #include <memory>
 #include <qglobal.h>
-#include <qhostaddress.h>
+#include <qlabel.h>
 #include <qmainwindow.h>
 #include <qobjectdefs.h>
 #include <qqueue.h>
@@ -12,15 +11,12 @@
 #include <qtablewidget.h>
 #include <qthread.h>
 #include <qtimer.h>
-#include <qudpsocket.h>
 #include <qvector.h>
 #include <qwidget.h>
 #include <utility>
 #include "iec104/iec104_class.h"
 #include "iec104/iec104_types.h"
-#include "qiec104.h"
-
-constexpr auto QTESTER_VERSION = "v3.1.0";
+#include "QIec104.h"
 
 namespace Ui
 {
@@ -40,13 +36,12 @@ public:
 
 private slots:
     void on_cbLog_clicked(); // Check box for log messages changed
+    void on_pbSettingsDialog_clicked(); // App config button pressed
     void on_pbSendCommandsButton_clicked(); // Send Command pressed
     void on_pbConnect_clicked(); // connect button pressed
     void on_pbGI_clicked(); // GI button pressed
     void slot_timer_logmsg(); // timer for log messages
-    void slot_timer_I104M_kamsg(); // timer for sending keepalive I104M messages
     void slot_processPendingUiData();
-    void slot_I104M_ready_to_read();  // I104M: slot to read data from OSHMI UDP
     void slot_dataIndication(const QVector<iec_obj>& objects);
     void slot_interrogationActConfIndication();
     void slot_interrogationActTermIndication();
@@ -59,6 +54,7 @@ private slots:
     void on_cbTheme_currentIndexChanged(int index); // Theme selection changed
 
     void on_cb888Mode_stateChanged(int arg1);
+    void reloadProtocolSettings();
 
 private:
     void queueProtocolCall(const std::function<void(QIec104*)>& fn);
@@ -75,9 +71,12 @@ private:
     std::map <std::pair<int, int>, QTableWidgetItem*> mapPtItem_ColCount;
     std::map <std::pair<int, int>, QTableWidgetItem*> mapPtItem_ColTimeTag;
 
+    QLabel m_lbStatus;
+    QLabel m_lbMode;
+
     std::unique_ptr<Ui::MainWindow> ui;
-    QTimer* tmLogMsg = nullptr; // timer to show log messages
-    QTimer* tmUiDataPump = nullptr; // timer to batch UI point updates
+    QTimer* tmLogMsg; // timer to show log messages
+    QTimer* tmUiDataPump; // timer to batch UI point updates
     QIec104* i104 = nullptr;
     QThread protocolThread;
     QQueue<QVector<iec_obj>> pendingDataIndications;
@@ -87,176 +86,9 @@ private:
     int logTickCount = 0;
 
     unsigned LastCommandAddress = 0;
-    int Hide = 0;
 
     bool ProtocolKeepAliveActive = false;
     bool ProtocolShutdown = false;
 
-    // I104M Related
-    void I104M_Loga(QString str, int id = 0); // I104M: log messages
-    void I104M_processPoints(const iec_obj* obj, unsigned numpoints);   // I104M: process points
-    inline bool I104M_HaveDualHost() { return (I104M_host_dual != QHostAddress("0.0.0.0")); }
-    QHostAddress I104M_host; // IP address from OSHMI main machine
-    QHostAddress I104M_host_dual; // OSHMI dual host address (the other machine) ПОИДЕЕ НАДО АДАПТИРОВАТЬ ПОД ВТОРОЙ СЕРВЕР
-    static const int I104M_porta = 8099; // UDP port to send data to OSHMI
-    static const int I104M_porta_escuta = 8098; // udp port to receive commands from OSHMI
-    static const int I104M_CntToBePrimary = 3; // counts necessary to be primary when not receiving keepalive messages
-    static const int I104M_seconds_kamsg = 7; // period of keepalive messages
-    int I104M_CntDnToBePrimary = 0; // countdown to be primary when not receiving keepalive messages
-    int I104M_Logar = 1; // controls log of I104M messages
-    bool isPrimary; // primary or secondary redundant mode
-    QUdpSocket* udps = nullptr; // I104M: udp socket
-    QTimer* tmI104M_kamsg = nullptr; // timer to send keep alive messages to the dual host
-    void SendOSHMI(char* msg, unsigned int packet_size);
     void fmtCP56Time(char*, const cp56time2a*);
 };
-
-
-#pragma pack(push)
-#pragma pack(1) // byte aligned structures
-
-#define I104M_LISTENUDPPORT 8098
-#define I104M_WRITEUDPPORT 8099
-
-#define I104M_ASDU_SPECIAL_CMD 1001
-#define I104M_SPECIAL_CMD_ADDR_REQ_GI 0
-#define I104M_SPECIAL_CMD_ADDR_KEEP_ALIVE 1
-
-#define PKTDIG_MAXPOINTS       250
-#define PKTEVE_MAXPOINTS       100
-#define PKTANA_MAXPOINTS       150
-
-#define MSGKA_SIG 0x5a5a5a5a
-
-#define MSGSUP_SIG 0x53535353
-typedef struct
-{
-    uint32_t signature;  // 0x53535353
-    uint32_t endereco;
-    uint32_t tipo;
-    uint32_t prim;
-    uint32_t sec;
-    uint32_t causa;
-    uint32_t taminfo;
-    unsigned char info[255];
-} t_msgsup;
-
-#define MSGSUPSQ_SIG 0x64646464
-typedef struct
-{
-    uint32_t signature;  // 0x64646464
-    uint32_t numpoints;
-    uint32_t tipo;
-    uint32_t prim;
-    uint32_t sec;
-    uint32_t causa;
-    uint32_t taminfo; // value size for the type (not counting the 4 byte address)
-    unsigned char info[2000]; // { 4 bytes uint32_t address, point value (taminfo bytes) } ...  Repeat
-} t_msgsupsq;
-
-#define MSGCMD_SIG 0x4b4b4b4b
-typedef struct
-{
-    uint32_t signature; // 0x4b4b4b4b
-    uint32_t endereco;
-    uint32_t tipo;
-    union
-    {
-        uint32_t onoff;
-        float setpoint;
-        int32_t setpoint_i32;
-        short int setpoint_i16;
-    };
-    uint32_t sbo;
-    uint32_t qu;
-    uint32_t utr;
-} t_msgcmd;
-
-typedef struct
-{
-    unsigned short nponto; // point address 1st & 2nd bytes
-    unsigned char nponto3; // point address 3rd byte
-    unsigned char iq;      // state & qualifier
-    unsigned short ms;     // milli seconds
-    unsigned char min;     // minute
-    unsigned char hora;    // hour
-    unsigned char dia;     // day
-    unsigned char mes;
-    unsigned char ano;
-} digital_w_time7;
-
-typedef struct
-{
-    unsigned char iq;     // state & qualifier
-    unsigned short ms;    // milli seconds
-    unsigned char min;    // minute
-    unsigned char hora;   // hour
-    unsigned char dia;    // day
-    unsigned char mes;
-    unsigned char ano;
-} digital_w_time7_seq;
-
-
-typedef struct
-{
-    unsigned char iq;      // state & qualifier
-} digital_notime_seq;
-
-typedef struct
-{
-    unsigned short nponto; // point address 1st & 2nd bytes
-    unsigned char nponto3; // point address 3rd byte
-    short sva;             // analog value 16bit integer
-    unsigned char qds;     // qualifier
-} analogico;
-
-typedef struct
-{
-    short sva;         // analog value 16bit integer
-    unsigned char qds; // qualifier
-} analogico_seq;
-
-typedef struct
-{
-    unsigned short nponto; // point address 1st & 2nd bytes
-    unsigned char nponto3; // point address 3rd byte
-    unsigned char vti;     // step pos
-    unsigned char qds;     // qualifier
-} step;
-
-typedef struct
-{
-    unsigned char vti;   // step pos
-    unsigned char qds;   // qualifier
-} step_seq;
-
-typedef struct
-{
-    unsigned short nponto; // point address 1st & 2nd bytes
-    unsigned char nponto3; // point address 3rd byte
-    float fr;              // analog value 4byte float
-    unsigned char qds;     // qualifier
-} flutuante;
-
-typedef struct
-{
-    float fr;         // analog value 4byte float
-    unsigned char qds;  // qualifier
-} flutuante_seq;
-
-typedef struct
-{
-    unsigned short nponto; // point address 1st & 2nd bytes
-    unsigned char nponto3; // point address 3rd byte
-    uint32_t bcr;      // valor binary counter reading
-    unsigned char qds;     // qualifier
-} integrated;
-
-typedef struct
-{
-    uint32_t bcr;   // value binary counter reading
-    unsigned char qds;  // qualifies
-} integrated_seq;
-
-#pragma pack(pop)
-

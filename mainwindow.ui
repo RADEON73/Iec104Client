@@ -6,528 +6,557 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1024</width>
-    <height>712</height>
+    <width>1079</width>
+    <height>746</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>IEC104Client [IEC60870-5-104]</string>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="Resources.qrc">
+    <normaloff>:/icons/Iec104Client.png</normaloff>:/icons/Iec104Client.png</iconset>
   </property>
   <widget class="QWidget" name="centralWidget">
-   <layout class="QGridLayout" name="gridLayout_2">
-    <item row="0" column="4">
-     <widget class="QLabel" name="label_11">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="text">
-       <string>Ip-адрес (резервный):</string>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="8">
-     <widget class="QLabel" name="label_3">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="text">
-       <string>Адрес АСДУ (CA):</string>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="9">
-     <widget class="QLineEdit" name="leLinkAddress">
-      <property name="maximumSize">
-       <size>
-        <width>60</width>
-        <height>20</height>
-       </size>
-      </property>
-      <property name="placeholderText">
-       <string>1</string>
-      </property>
-     </widget>
-    </item>
-    <item row="3" column="1" colspan="2">
-     <widget class="QComboBox" name="cbTheme">
-      <property name="toolTip">
-       <string>Change application theme</string>
-      </property>
+   <layout class="QGridLayout" name="gridLayout_4">
+    <item row="0" column="0">
+     <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
-       <property name="text">
-        <string>Светлая</string>
-       </property>
+       <widget class="QPushButton" name="pbSettingsDialog">
+        <property name="text">
+         <string>Настройки</string>
+        </property>
+       </widget>
       </item>
       <item>
-       <property name="text">
-        <string>Темная</string>
-       </property>
+       <widget class="QPushButton" name="pbConnect">
+        <property name="text">
+         <string>Подключить</string>
+        </property>
+       </widget>
       </item>
-     </widget>
-    </item>
-    <item row="0" column="2">
-     <widget class="QLineEdit" name="ipAddress">
-      <property name="text">
-       <string/>
-      </property>
-      <property name="placeholderText">
-       <string>127.0.0.1</string>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="10">
-     <widget class="QLabel" name="label_4">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="text">
-       <string>Адрес отправителя (OA):</string>
-      </property>
-     </widget>
-    </item>
-    <item row="2" column="0" colspan="17">
-     <widget class="QGroupBox" name="groupBox_2">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="title">
-       <string>Отправить команду:</string>
-      </property>
-      <layout class="QGridLayout" name="gridLayout">
-       <property name="leftMargin">
-        <number>2</number>
-       </property>
-       <property name="topMargin">
-        <number>2</number>
-       </property>
-       <property name="rightMargin">
-        <number>2</number>
-       </property>
-       <property name="bottomMargin">
-        <number>2</number>
-       </property>
-       <property name="spacing">
-        <number>2</number>
-       </property>
-       <item row="0" column="0">
-        <widget class="QLabel" name="label_5">
+      <item>
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_10">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="text">
+         <string>Тема:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="cbTheme">
+        <property name="toolTip">
+         <string>Change application theme</string>
+        </property>
+        <item>
          <property name="text">
-          <string>Адрес:</string>
+          <string>Светлая</string>
          </property>
-        </widget>
-       </item>
-       <item row="0" column="1" colspan="2">
-        <layout class="QHBoxLayout" name="horizontalLayoutCmdAddress">
+        </item>
+        <item>
+         <property name="text">
+          <string>Темная</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item row="1" column="0">
+     <widget class="QSplitter" name="splitter_2">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+      <widget class="QSplitter" name="splitter">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <widget class="QGroupBox" name="groupBox">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="title">
+         <string>Список сигналов:</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_2">
+         <property name="leftMargin">
+          <number>2</number>
+         </property>
+         <property name="topMargin">
+          <number>2</number>
+         </property>
+         <property name="rightMargin">
+          <number>2</number>
+         </property>
+         <property name="bottomMargin">
+          <number>2</number>
+         </property>
          <property name="spacing">
-          <number>0</number>
+          <number>2</number>
          </property>
-         <item>
-          <widget class="QLineEdit" name="leCmdAddressLow">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="toolTip">
-            <string>Low Octet</string>
-           </property>
-           <property name="placeholderText">
-            <string>Low</string>
+         <item row="0" column="0">
+          <widget class="QPushButton" name="pbGI">
+           <property name="text">
+            <string>Инициировать общий опрос</string>
            </property>
           </widget>
          </item>
-         <item>
-          <widget class="QLineEdit" name="leCmdAddressMid">
+         <item row="1" column="0">
+          <widget class="QTableWidget" name="twPontos">
            <property name="sizePolicy">
-            <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+            <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
              <horstretch>0</horstretch>
              <verstretch>0</verstretch>
             </sizepolicy>
            </property>
-           <property name="toolTip">
-            <string>Mid Octet</string>
+           <property name="alternatingRowColors">
+            <bool>true</bool>
            </property>
-           <property name="placeholderText">
-            <string>Mid</string>
-           </property>
+           <attribute name="horizontalHeaderMinimumSectionSize">
+            <number>50</number>
+           </attribute>
+           <attribute name="horizontalHeaderDefaultSectionSize">
+            <number>50</number>
+           </attribute>
+           <attribute name="horizontalHeaderStretchLastSection">
+            <bool>true</bool>
+           </attribute>
+           <attribute name="verticalHeaderVisible">
+            <bool>false</bool>
+           </attribute>
           </widget>
          </item>
-         <item>
-          <widget class="QLineEdit" name="leCmdAddressHigh">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="toolTip">
-            <string>High Octet</string>
-           </property>
-           <property name="placeholderText">
-            <string>High</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLineEdit" name="leCmdAddress">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="toolTip">
-            <string>Enter the command object address (24-bit Decimal)</string>
+         <item row="2" column="0">
+          <widget class="QPushButton" name="pbCopyVals">
+           <property name="text">
+            <string>Копировать карту сигналов</string>
            </property>
           </widget>
          </item>
         </layout>
-       </item>
-       <item row="0" column="3">
-        <widget class="QCheckBox" name="cb888Mode">
-         <property name="text">
-          <string>8-8-8 IOA Format</string>
+       </widget>
+       <widget class="QGroupBox" name="sendCommand">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="title">
+         <string>Отправить команду:</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout">
+         <property name="leftMargin">
+          <number>2</number>
          </property>
-         <property name="checked">
-          <bool>false</bool>
+         <property name="topMargin">
+          <number>2</number>
          </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="label">
-         <property name="text">
-          <string>АСДУ:</string>
+         <property name="rightMargin">
+          <number>2</number>
          </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QLineEdit" name="leASDUAddr">
-         <property name="toolTip">
-          <string>Put here the ASDU address for commands.
-If empty will use remote link address.</string>
+         <property name="bottomMargin">
+          <number>2</number>
          </property>
-        </widget>
-       </item>
-       <item row="1" column="2" colspan="2">
-        <widget class="QCheckBox" name="cbSBO">
-         <property name="text">
-          <string> Режим «Выбрать → Выполнить» (SBO)</string>
+         <property name="spacing">
+          <number>2</number>
          </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_7">
-         <property name="text">
-          <string>Тип:</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QComboBox" name="cbCmdAsdu">
-         <item>
-          <property name="text">
-           <string>45: Single - C_SC_NA_1</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>46: Double - C_DC_NA_1</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>47: Reg. Step - C_RC_NA_1</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>58: Single with time tag - C_SC_TA_1</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>59: Double with time tag - C_DC_TA_1</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>60: Reg. Step with time tag - C_RC_TA_1</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>48: Set-point normalised value - C_SE_NA_1</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>49: Set-point scaled value - C_SE_NB_1</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>50: Set-point short floating point value - C_SE_NC_1</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>61: Set-point normalised value with time tag - C_SE_TA_1</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>62: Set-point scaled value with time tag - C_SE_TB_1</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>63: Set-point short floating point value with time tag - C_SE_TC_1</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>101: Counter Interrogation Command - C_CI_NA_1 *NOT IMPL</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>102: Read Command - C_RD_NA_1 *NOT IMPL</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>103: Clock Syncronization - C_CS_NA_1</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>105: Reset Process Command - C_RP_NA_1</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>107: Test Command with time tag - C_TS_TA_1</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>110: Parameter of measured normalized value - P_ME_NA_1</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>111: Parameter of measured scaled value - P_ME_NB_1</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>112: Parameter of measured short floating point value - P_ME_NC_1</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>113: Parameter activation - P_AC_NA_1</string>
-          </property>
-         </item>
-        </widget>
-       </item>
-       <item row="2" column="2">
-        <widget class="QLabel" name="label_8">
-         <property name="text">
-          <string>Длительность (KPA):</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="3">
-        <widget class="QComboBox" name="cbCmdDuration">
-         <item>
-          <property name="text">
-           <string>0 = QU:no additional definition</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>1 = QU:short pulse</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>2 = QU:long pulse</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>3 = QU:persistent output</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>0 = KPA:unused</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>1 = KPA:threshold</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>2 = KPA:filter</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>3 = KPA:lolimit</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>4 = KPA:hilimit</string>
-          </property>
-         </item>
-        </widget>
-       </item>
-       <item row="3" column="0">
-        <widget class="QLabel" name="label_6">
-         <property name="text">
-          <string>Значение:</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="1">
-        <widget class="QLineEdit" name="leCmdValue">
-         <property name="toolTip">
-          <string>Enter value for command
+         <item row="13" column="1">
+          <widget class="QLineEdit" name="leCmdValue">
+           <property name="toolTip">
+            <string>Enter value for command
 Use 0 or 1 for digital single
 Use 1 or 2 for digital double</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="2" colspan="2">
-        <widget class="QPushButton" name="pbSendCommandsButton">
-         <property name="text">
-          <string>Отправить команду</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </widget>
-    </item>
-    <item row="3" column="0">
-     <widget class="QLabel" name="label_10">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="text">
-       <string>Тема:</string>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="13">
-     <widget class="QLabel" name="lbMode">
-      <property name="text">
-       <string>Mode</string>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="0" colspan="2">
-     <widget class="QLabel" name="label_2">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="text">
-       <string>Ip-адрес:</string>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="15" colspan="2">
-     <widget class="QLabel" name="lbStatus">
-      <property name="text">
-       <string>Отключено</string>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="6">
-     <widget class="QLabel" name="label_9">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="text">
-       <string>Порт:</string>
-      </property>
-     </widget>
-    </item>
-    <item row="1" column="0" colspan="17">
-     <widget class="QSplitter" name="splitter">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <widget class="QWidget" name="layoutWidget">
-       <layout class="QVBoxLayout" name="verticalLayout">
-        <item>
-         <widget class="QPushButton" name="pbGI">
-          <property name="text">
-           <string>Инициировать общий опрос</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QTableWidget" name="twPontos">
-          <property name="alternatingRowColors">
-           <bool>true</bool>
-          </property>
-          <attribute name="verticalHeaderVisible">
-           <bool>false</bool>
-          </attribute>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="pbCopyVals">
-          <property name="text">
-           <string>Копировать карту сигналов</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
+           </property>
+          </widget>
+         </item>
+         <item row="10" column="1">
+          <widget class="QLabel" name="label_8">
+           <property name="text">
+            <string>Длительность (KPA):</string>
+           </property>
+          </widget>
+         </item>
+         <item row="15" column="1">
+          <widget class="QPushButton" name="pbSendCommandsButton">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string>Отправить команду</string>
+           </property>
+          </widget>
+         </item>
+         <item row="9" column="1">
+          <widget class="QComboBox" name="cbCmdAsdu">
+           <item>
+            <property name="text">
+             <string>45: Single - C_SC_NA_1</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>46: Double - C_DC_NA_1</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>47: Reg. Step - C_RC_NA_1</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>58: Single with time tag - C_SC_TA_1</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>59: Double with time tag - C_DC_TA_1</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>60: Reg. Step with time tag - C_RC_TA_1</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>48: Set-point normalised value - C_SE_NA_1</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>49: Set-point scaled value - C_SE_NB_1</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>50: Set-point short floating point value - C_SE_NC_1</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>61: Set-point normalised value with time tag - C_SE_TA_1</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>62: Set-point scaled value with time tag - C_SE_TB_1</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>63: Set-point short floating point value with time tag - C_SE_TC_1</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>101: Counter Interrogation Command - C_CI_NA_1 *NOT IMPL</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>102: Read Command - C_RD_NA_1 *NOT IMPL</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>103: Clock Syncronization - C_CS_NA_1</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>105: Reset Process Command - C_RP_NA_1</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>107: Test Command with time tag - C_TS_TA_1</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>110: Parameter of measured normalized value - P_ME_NA_1</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>111: Parameter of measured scaled value - P_ME_NB_1</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>112: Parameter of measured short floating point value - P_ME_NC_1</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>113: Parameter activation - P_AC_NA_1</string>
+            </property>
+           </item>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLabel" name="label_5">
+           <property name="text">
+            <string>Адрес:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QCheckBox" name="cb888Mode">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string>8-8-8 IOA Format</string>
+           </property>
+           <property name="checked">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="6" column="1">
+          <widget class="QLineEdit" name="leASDUAddr">
+           <property name="toolTip">
+            <string>Put here the ASDU address for commands.
+If empty will use remote link address.</string>
+           </property>
+          </widget>
+         </item>
+         <item row="14" column="1">
+          <widget class="QCheckBox" name="cbSBO">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string> Режим «Выбрать → Выполнить» (SBO)</string>
+           </property>
+          </widget>
+         </item>
+         <item row="5" column="1">
+          <widget class="QLabel" name="label">
+           <property name="text">
+            <string>АСДУ:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="8" column="1">
+          <widget class="QLabel" name="label_7">
+           <property name="text">
+            <string>Тип:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="12" column="1">
+          <widget class="QLabel" name="label_6">
+           <property name="text">
+            <string>Значение:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1" colspan="2">
+          <layout class="QHBoxLayout" name="horizontalLayoutCmdAddress">
+           <property name="spacing">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QSpinBox" name="leCmdAddressLow">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="buttonSymbols">
+              <enum>QAbstractSpinBox::NoButtons</enum>
+             </property>
+             <property name="specialValueText">
+              <string>LOW</string>
+             </property>
+             <property name="maximum">
+              <number>65535</number>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QSpinBox" name="leCmdAddressMid">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="buttonSymbols">
+              <enum>QAbstractSpinBox::NoButtons</enum>
+             </property>
+             <property name="specialValueText">
+              <string>MID</string>
+             </property>
+             <property name="maximum">
+              <number>65535</number>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QSpinBox" name="leCmdAddressHigh">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="buttonSymbols">
+              <enum>QAbstractSpinBox::NoButtons</enum>
+             </property>
+             <property name="specialValueText">
+              <string>HIGH</string>
+             </property>
+             <property name="maximum">
+              <number>65535</number>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QSpinBox" name="leCmdAddress">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="buttonSymbols">
+              <enum>QAbstractSpinBox::NoButtons</enum>
+             </property>
+             <property name="specialValueText">
+              <string/>
+             </property>
+             <property name="maximum">
+              <number>65535</number>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item row="11" column="1">
+          <widget class="QComboBox" name="cbCmdDuration">
+           <item>
+            <property name="text">
+             <string>0 = QU:no additional definition</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>1 = QU:short pulse</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>2 = QU:long pulse</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>3 = QU:persistent output</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>0 = KPA:unused</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>1 = KPA:threshold</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>2 = KPA:filter</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>3 = KPA:lolimit</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>4 = KPA:hilimit</string>
+            </property>
+           </item>
+          </widget>
+         </item>
+         <item row="16" column="1">
+          <spacer name="verticalSpacer">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </widget>
       </widget>
-      <widget class="QWidget" name="verticalLayoutWidget_2">
-       <layout class="QVBoxLayout" name="verticalLayout_2">
+      <widget class="QGroupBox" name="cbLog">
+       <property name="title">
+        <string>Включить логирование</string>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+       <layout class="QGridLayout" name="gridLayout_3">
+        <property name="leftMargin">
+         <number>2</number>
+        </property>
+        <property name="topMargin">
+         <number>2</number>
+        </property>
+        <property name="rightMargin">
+         <number>2</number>
+        </property>
+        <property name="bottomMargin">
+         <number>2</number>
+        </property>
         <property name="spacing">
          <number>2</number>
         </property>
-        <item>
-         <widget class="QCheckBox" name="cbLog">
-          <property name="text">
-           <string>Включить логирование</string>
-          </property>
-          <property name="checked">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-        <item>
+        <item row="0" column="0">
          <widget class="QPlainTextEdit" name="lwLog">
           <property name="font">
            <font>
@@ -535,17 +564,11 @@ Use 1 or 2 for digital double</string>
             <pointsize>9</pointsize>
            </font>
           </property>
-          <property name="verticalScrollBarPolicy">
-           <enum>Qt::ScrollBarAlwaysOn</enum>
-          </property>
-          <property name="horizontalScrollBarPolicy">
-           <enum>Qt::ScrollBarAlwaysOn</enum>
-          </property>
           <property name="undoRedoEnabled">
            <bool>false</bool>
           </property>
           <property name="lineWrapMode">
-           <enum>QPlainTextEdit::NoWrap</enum>
+           <enum>QPlainTextEdit::WidgetWidth</enum>
           </property>
           <property name="readOnly">
            <bool>true</bool>
@@ -555,7 +578,7 @@ Use 1 or 2 for digital double</string>
           </property>
          </widget>
         </item>
-        <item>
+        <item row="1" column="0">
          <widget class="QCheckBox" name="cbAutoScroll">
           <property name="text">
            <string>Автоскролл</string>
@@ -565,7 +588,7 @@ Use 1 or 2 for digital double</string>
           </property>
          </widget>
         </item>
-        <item>
+        <item row="2" column="0">
          <widget class="QPushButton" name="pbCopyClipb">
           <property name="text">
            <string>Копировать лог</string>
@@ -576,122 +599,13 @@ Use 1 or 2 for digital double</string>
       </widget>
      </widget>
     </item>
-    <item row="0" column="14">
-     <widget class="QPushButton" name="pbConnect">
-      <property name="text">
-       <string>Подключить</string>
-      </property>
-     </widget>
-    </item>
-    <item row="3" column="3" colspan="13">
-     <spacer name="horizontalSpacer">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>782</width>
-        <height>20</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item row="0" column="11">
-     <widget class="QLineEdit" name="leMasterAddress">
-      <property name="maximumSize">
-       <size>
-        <width>60</width>
-        <height>20</height>
-       </size>
-      </property>
-      <property name="placeholderText">
-       <string>1</string>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="7">
-     <widget class="QLineEdit" name="lePort">
-      <property name="maximumSize">
-       <size>
-        <width>60</width>
-        <height>20</height>
-       </size>
-      </property>
-      <property name="text">
-       <string/>
-      </property>
-      <property name="placeholderText">
-       <string>2404</string>
-      </property>
-     </widget>
-    </item>
-    <item row="3" column="16">
-     <widget class="QLabel" name="lbCopyright">
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="font">
-       <font>
-        <italic>true</italic>
-       </font>
-      </property>
-      <property name="text">
-       <string>Версия 1.0.0</string>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="5">
-     <widget class="QLineEdit" name="ipAddressReserve">
-      <property name="text">
-       <string/>
-      </property>
-      <property name="placeholderText">
-       <string>127.0.0.1</string>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="12">
-     <spacer name="horizontalSpacer_2">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>208</width>
-        <height>20</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
    </layout>
-  </widget>
-  <widget class="QMenuBar" name="menuBar">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>0</y>
-     <width>1024</width>
-     <height>21</height>
-    </rect>
-   </property>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
- <tabstops>
-  <tabstop>pbConnect</tabstop>
-  <tabstop>ipAddress</tabstop>
-  <tabstop>lePort</tabstop>
-  <tabstop>leLinkAddress</tabstop>
-  <tabstop>leMasterAddress</tabstop>
-  <tabstop>leCmdAddressLow</tabstop>
-  <tabstop>leCmdAddressMid</tabstop>
-  <tabstop>leCmdAddressHigh</tabstop>
-  <tabstop>leCmdAddress</tabstop>
- </tabstops>
- <resources/>
+ <resources>
+  <include location="Resources.qrc"/>
+ </resources>
  <connections/>
 </ui>

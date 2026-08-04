@@ -7,6 +7,8 @@ class TLogMsg
 {
 public:
     TLogMsg();
+    ~TLogMsg();
+
     void pushMsg(const char * msg, unsigned int level=0); // level: 0=less important
     std::string pullMsg();
     void activateLog();
@@ -23,9 +25,9 @@ private:
     std::list <std::string> mLstLog;
     std::list <time_t> mLstTime;
     mutable QMutex mMutex;
-    unsigned int mMaxMsg;
-    bool mDoLog;
-    bool mRegTime;
-    time_t mLastTime; // time of the previously pulled message
-    unsigned int mLevel; // exibition level 0=all, 1 an on, exibit more information progressively
+    unsigned int mMaxMsg = 1000;
+    bool mDoLog = true;
+    bool mRegTime = false;
+    time_t mLastTime = 0; // time of the previously pulled message
+    unsigned int mLevel = 0; // exibition level 0=all, 1 an on, exibit more information progressively
 };

@@ -8,7 +8,6 @@
 #include <map>
 #include <sstream>
 #include <string>
-#include <string.h>
 #include "iec104_types.h"
 
 iec104_class::iec104_class()

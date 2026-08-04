@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <file>icons/Iec104Client.png</file>
+    </qresource>
+</RCC>

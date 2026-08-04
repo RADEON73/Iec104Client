@@ -27,31 +27,42 @@ endif()
 
 set(SOURCES
     main.cpp
-    mainwindow.cpp
-    application.cpp
-	logmsg.cpp
+    MainWindow.cpp
+    SettingsDialog.cpp
+    AppSettings.cpp
+	TLogMsg.cpp
+    QIec104.cpp
     iec104/iec104_class.cpp
-    qiec104.cpp
 )
 
 set(HEADERS
-    mainwindow.h
-    application.h
-	logmsg.h
-    qiec104.h
+    MainWindow.h
+    SettingsDialog.h
+    AppSettings.h
+    TLogMsg.h
+    QIec104.h
     iec104/iec104_class.h
     iec104/iec104_types.h
     iec104/iec104.h
 )
 
 set(FORMS
-    mainwindow.ui
+    MainWindow.ui
+    SettingsDialog.ui
 )
+
+set(OTHER
+    cpp.hint
+)
+
+qt5_add_resources(APP_RESOURCES Resources.qrc)
 
 add_executable(${PROJECT_NAME}
     ${SOURCES}
     ${HEADERS}
     ${FORMS}
+	${APP_RESOURCES}
+	${OTHER}
 )
 
 if(WIN32)

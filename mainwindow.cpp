@@ -1,7 +1,6 @@
-#include "mainwindow.h"
-#include "ui_mainwindow.h"
+#include "MainWindow.h"
+#include "ui_MainWindow.h"
 
-#include <application.h>
 #include <cstdint>
 #include <cstdio>
 #include <functional>
@@ -11,39 +10,36 @@
 #include <qclipboard.h>
 #include <qcolor.h>
 #include <qcombobox.h>
-#include <qcoreapplication.h>
+#include <qcoreevent.h>
 #include <qdatetime.h>
 #include <qelapsedtimer.h>
 #include <qevent.h>
 #include <qfont.h>
 #include <qglobal.h>
-#include <qhostaddress.h>
-#include <qiodevice.h>
 #include <qmainwindow.h>
 #include <qnamespace.h>
 #include <qobjectdefs.h>
 #include <qpalette.h>
 #include <qregularexpression.h>
 #include <qscrollbar.h>
-#include <qsettings.h>
 #include <qstring.h>
 #include <qstringlist.h>
 #include <qstylefactory.h>
 #include <qtablewidget.h>
 #include <qtextcursor.h>
 #include <qtextformat.h>
-#include <qtextstream.h>
 #include <qtimer.h>
-#include <qudpsocket.h>
-#include <qvalidator.h>
 #include <qvector.h>
 #include <qwidget.h>
 #include <string>
-#include <string.h>
 #include <utility>
+#include "AppSettings.h"
 #include "iec104/iec104_class.h"
 #include "iec104/iec104_types.h"
-#include "qiec104.h"
+#include "QIec104.h"
+#include "SettingsDialog.h"
+
+constexpr auto VERSION = "v1.0.0";
 
 static unsigned int parseIoa(const QString& str)
 {
@@ -86,9 +82,9 @@ void MainWindow::shutdownProtocolThread()
         return;
 
     QMetaObject::invokeMethod(i104,
-        [this]() {
-            i104->terminate();
-            i104->deleteLater();
+        [worker = i104]() {
+            worker->terminate();
+            worker->deleteLater();
         },
         Qt::BlockingQueuedConnection);
 
@@ -105,145 +101,71 @@ MainWindow::MainWindow(QWidget* parent)
     ui(std::make_unique<Ui::MainWindow>()),
     i104(new QIec104())
 {
+    ui->setupUi(this);
+
     i104->mLog.deactivateLog();
 
-    Application::instance().load();
+    AppSettings::instance().load();
 
-    // this is for using with the OSHMI HMI in a dual architecture
-    QSettings settings_oshmi("../conf/hmi.ini", QSettings::IniFormat);
-    I104M_host_dual.setAddress(
-        settings_oshmi.value("REDUNDANCY/OTHER_HMI_IP", "0.0.0.0").toString());
-    I104M_host.setAddress("127.0.0.1");
-    I104M_CntDnToBePrimary = I104M_CntToBePrimary;
-
-    ui->setupUi(this);
-    if (menuBar())
-        menuBar()->hide();
-    if (statusBar())
-        statusBar()->hide();
+    auto separator = []() {
+        auto f = new QFrame;
+        f->setFrameShape(QFrame::VLine);
+        f->setFrameShadow(QFrame::Sunken);
+        return f;
+        };
+    statusBar()->addWidget(&m_lbStatus, 1);          // занимает все свободное место
+    statusBar()->addPermanentWidget(&m_lbMode);
+    statusBar()->addPermanentWidget(separator());
+    statusBar()->addPermanentWidget(new QLabel(VERSION));
 
     on_cb888Mode_stateChanged(ui->cb888Mode->isChecked());
 
     if (ui->cbLog->isChecked()) {
         QDate dt = QDate::currentDate();
-        QString str = dt.toString() + QString(" - ") + QString(QTESTER_VERSION);
+        QString str = dt.toString() + QString(" - ") + QString(VERSION);
         i104->mLog.activateLog();
         i104->mLog.pushMsg(str.toStdString().c_str());
     }
     else
         i104->mLog.deactivateLog();
 
-    // this is for hiding the window when runnig
-    Hide = settings_oshmi.value("RUN/HIDE", "").toInt();
-
-    this->setWindowTitle(tr("QTester104 IEC60870-5-104"));
-
-    QIntValidator* validator = new QIntValidator(0, 65535, this);
-    ui->leLinkAddress->setValidator(validator);
-    QIntValidator* validator1 = new QIntValidator(0, 65535, this);
-    ui->lePort->setValidator(validator1);
-    QIntValidator* validator2 = new QIntValidator(0, 255, this);
-    ui->leMasterAddress->setValidator(validator2);
-
-    QRegularExpression rx("\\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}("
-        "?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\b");
-    QValidator* valip = new QRegularExpressionValidator(rx, this);
-    ui->ipAddress->setValidator(valip);
-    ui->ipAddressReserve->setValidator(valip);
-
-    udps = new QUdpSocket(this);
-    udps->bind(I104M_porta_escuta);
-    udps->open(QIODevice::ReadWrite);
-
-    auto& s = Application::instance().settings();
-
-    QString qs;
-    QTextStream(&qs) << s.TcpPort;
-    ui->lePort->setText(qs);
-    qs = "";
-    QTextStream(&qs) << s.CA;
-    ui->leLinkAddress->setText(qs);
-    qs = "";
-    QTextStream(&qs) << s.OA;
-    ui->leMasterAddress->setText(qs);
-
-    ui->ipAddress->setText(s.IpAddress);
-    ui->ipAddressReserve->setText(s.IpAddressReserve);
-
-    tmLogMsg = new QTimer();
-    tmUiDataPump = new QTimer();
-    tmI104M_kamsg = new QTimer();
+    auto& s = AppSettings::instance();
 
     i104->moveToThread(&protocolThread);
     protocolThread.start();
 
-    if (udps != nullptr) {
-        connect(udps, SIGNAL(readyRead()), this, SLOT(slot_I104M_ready_to_read()));
-    }
-    connect(tmLogMsg, SIGNAL(timeout()), this, SLOT(slot_timer_logmsg()));
-    connect(tmUiDataPump, SIGNAL(timeout()), this, SLOT(slot_processPendingUiData()));
-    connect(tmI104M_kamsg, SIGNAL(timeout()), this,
-        SLOT(slot_timer_I104M_kamsg()));
-    connect(i104, &QIec104::signal_dataIndication, this,
-        &MainWindow::slot_dataIndication);
-    connect(i104, &QIec104::signal_interrogationActConfIndication, this,
-        &MainWindow::slot_interrogationActConfIndication);
-    connect(i104, &QIec104::signal_interrogationActTermIndication, this,
-        &MainWindow::slot_interrogationActTermIndication);
-    connect(i104, &QIec104::signal_tcp_connect, this, &MainWindow::slot_tcpconnect);
-    connect(i104, &QIec104::signal_tcp_disconnect, this,
-        &MainWindow::slot_tcpdisconnect);
-    connect(i104, &QIec104::signal_commandActRespIndication, this,
-        &MainWindow::slot_commandActRespIndication);
+    tmUiDataPump = new QTimer(this);
+    connect(tmUiDataPump, &QTimer::timeout, this, &MainWindow::slot_processPendingUiData);
 
-    queueProtocolCall([=](QIec104* worker) {
-        worker->setPrimaryAddress(s.OA);
-        worker->ForcePrimary = s.ForcePrimary;
-        worker->setSecondaryAddress(s.CA);
-        worker->SendCommands = s.SendCommands;
-        worker->setSecondaryIP_backup(const_cast<char*>(s.IpAddressReserve.toStdString().c_str()));
-        worker->setSecondaryIP(const_cast<char*>(s.IpAddress.toStdString().c_str()));
-        worker->setPortTCP(s.TcpPort);
-        worker->setGIPeriod(s.GIperiod);
-        });
+    connect(i104, &QIec104::signal_dataIndication, this, &MainWindow::slot_dataIndication);
+    connect(i104, &QIec104::signal_interrogationActConfIndication, this, &MainWindow::slot_interrogationActConfIndication);
+    connect(i104, &QIec104::signal_interrogationActTermIndication, this, &MainWindow::slot_interrogationActTermIndication);
+    connect(i104, &QIec104::signal_tcp_connect, this, &MainWindow::slot_tcpconnect);
+    connect(i104, &QIec104::signal_tcp_disconnect, this, &MainWindow::slot_tcpdisconnect);
+    connect(i104, &QIec104::signal_commandActRespIndication, this, &MainWindow::slot_commandActRespIndication);
+
+    reloadProtocolSettings();
 
     ui->pbGI->setEnabled(false);
-    ui->pbSendCommandsButton->setEnabled(false);
+    ui->pbCopyVals->setEnabled(false);
+	ui->sendCommand->setEnabled(false);
 
-    ui->twPontos->clear();
-    ui->twPontos->setSortingEnabled(false);
-    ui->twPontos->setColumnCount(8);
     ui->twPontos->sortByColumn(0, Qt::AscendingOrder);
-
-    if (!s.IpAddress.isEmpty())
-        on_pbConnect_clicked();
-
+    ui->twPontos->setColumnCount(8);
     QStringList colunas;
-    colunas << "Address"
-        << "CA"
-        << "Value"
-        << "Type"
-        << "Cause"
-        << "Flags"
-        << "Count"
-        << "TimeTag";
+    colunas << "Адрес"
+        << "АСДУ"
+        << "Значение"
+        << "Тип"
+        << "Причина"
+        << "Флаги"
+        << "Счетчик"
+        << "Временная метка";
     ui->twPontos->setHorizontalHeaderLabels(colunas);
 
+    tmLogMsg = new QTimer(this);
+    connect(tmLogMsg, &QTimer::timeout, this, &MainWindow::slot_timer_logmsg);
     tmLogMsg->start(350);
-
-    if (I104M_HaveDualHost()) {
-        tmI104M_kamsg->start(I104M_seconds_kamsg * 1000);
-        isPrimary = false;
-        queueProtocolCall([](QIec104* worker) { worker->disable_connect(); });
-        ui->lbMode->setText("<font color='red'>Резервный</font>");
-    }
-    else {
-        isPrimary = true;
-        queueProtocolCall([](QIec104* worker) { worker->enable_connect(); });
-        ui->lbMode->setText("<font color='green'>Основной</font>");
-    }
-
-    ui->lbCopyright->setText(QTESTER_VERSION);
 
     QFont font = QFont("Consolas");
     font.setStyleHint(QFont::Monospace);
@@ -259,12 +181,9 @@ MainWindow::MainWindow(QWidget* parent)
 
 MainWindow::~MainWindow()
 {
-    Application::instance().save();
+    AppSettings::instance().store();
 
     shutdownProtocolThread();
-    delete tmLogMsg;
-    delete tmUiDataPump;
-    delete tmI104M_kamsg;
 }
 
 void MainWindow::on_pbGI_clicked()
@@ -283,15 +202,9 @@ void MainWindow::on_pbConnect_clicked()
             });
     }
     else {
-        auto& s = Application::instance().settings();
+        auto& s = AppSettings::instance();
 
-        s.IpAddress = ui->ipAddress->text();
-        s.IpAddressReserve = ui->ipAddressReserve->text();
-        s.TcpPort = ui->lePort->text().toUInt();
-        s.CA = ui->leLinkAddress->text().toInt();
-        s.OA = ui->leMasterAddress->text().toInt();
-
-        queueProtocolCall([=](QIec104* worker) {
+        queueProtocolCall([=, &s](QIec104* worker) {
             worker->setSecondaryIP(
                 const_cast<char*>(s.IpAddress.toStdString().c_str()));
             worker->setPortTCP(s.TcpPort);
@@ -299,24 +212,9 @@ void MainWindow::on_pbConnect_clicked()
             worker->setPrimaryAddress(s.OA);
             });
 
-        ui->ipAddress->setText(s.IpAddress);
-        ui->ipAddressReserve->setText(s.IpAddressReserve);
-
-        QString qs;
-        QTextStream(&qs) << ui->leLinkAddress->text().toInt();
-        ui->leLinkAddress->setText(qs);
-        qs = "";
-        QTextStream(&qs) << ui->leMasterAddress->text().toInt();
-        ui->leMasterAddress->setText(qs);
-
-        ui->lePort->setEnabled(false);
-        ui->ipAddress->setEnabled(false);
-        ui->ipAddressReserve->setEnabled(false);
-        ui->leLinkAddress->setEnabled(false);
-        ui->leMasterAddress->setEnabled(false);
-
+		ui->pbSettingsDialog->setEnabled(false);
         ui->pbConnect->setText("Прервать");
-        ui->lbStatus->setText("<font color='green'>Попытка подключения...</font>");
+        m_lbStatus.setText("<font color='green'>Попытка подключения...</font>");
 
         mapPtItem_ColAddress.clear();
         mapPtItem_ColCommonAddress.clear();
@@ -334,149 +232,31 @@ void MainWindow::on_pbConnect_clicked()
     }
 }
 
-// receive data/commands from OSHMI
-void MainWindow::slot_I104M_ready_to_read()
+void MainWindow::reloadProtocolSettings()
 {
-    if (udps == nullptr) {
-        return;
-    }
+    auto& s = AppSettings::instance();
 
-    char buf[5000];
+    queueProtocolCall([&s](QIec104* worker) {
+        worker->setSecondaryIP(const_cast<char*>(s.IpAddress.toStdString().c_str()));
+        worker->setSecondaryIP_backup(const_cast<char*>(s.IpAddressReserve.toStdString().c_str()));
+        worker->setPortTCP(s.TcpPort);
 
-    unsigned char br[2000]; // buffer de recepcao
-    int bytesrec;
+        worker->setSecondaryAddress(s.CA);
+        worker->setPrimaryAddress(s.OA);
 
-    while (udps->hasPendingDatagrams()) {
-        QHostAddress address;
-        quint16 port;
-        bytesrec = int(udps->readDatagram(reinterpret_cast<char*>(br), sizeof(br),
-            &address, &port));
+        worker->setGIPeriod(s.GIperiod);
 
-        if (bytesrec <= 0)
-            return;
+        worker->ForcePrimary = s.ForcePrimary;
+        worker->SendCommands = s.SendCommands;
+        });
+}
 
-        // I104M message must be local or from redundant computer, consider ipv4 &
-        // ipv6
-        if (address.toString() != "127.0.0.1" &&
-            address.toString() != "::ffff:127.0.0.1" &&
-            address.toString() != I104M_host_dual.toString() &&
-            address.toString() !=
-            (QString("::ffff:") + I104M_host_dual.toString())) {
-            I104M_Loga(QString("R--> I104M: Message from invalid origin ") +
-                address.toString());
-            continue;
-        }
-
-        // I104M message
-        t_msgcmd* pmsg = reinterpret_cast<t_msgcmd*>(br);
-
-        const int dumplim = 100; // limit the hex dump so buf cannot overflow
-        sprintf(buf, "%3d: I104M: ", bytesrec);
-        for (int i = 0; i < bytesrec && i < dumplim; i++)
-            sprintf(buf + strlen(buf), "%02x ", br[i]);
-        if (bytesrec > dumplim)
-            sprintf(buf + strlen(buf), "...");
-        I104M_Loga(buf);
-
-        if (bytesrec < int(sizeof(t_msgcmd)) || pmsg->signature != MSGCMD_SIG) {
-            I104M_Loga("R--> I104M: Invalid Message!");
-            continue;
-        }
-
-        auto& s = Application::instance().settings();
-
-        iec_obj obj = {};
-        obj.cause = iec104_class::ACTIVATION;
-        obj.address = pmsg->endereco;
-        obj.ca = static_cast<unsigned short>(pmsg->utr);
-        obj.qu = static_cast<unsigned char>(pmsg->qu);
-        obj.se = static_cast<unsigned char>(pmsg->sbo);
-        obj.type = static_cast<unsigned char>(pmsg->tipo);
-
-        switch (pmsg->tipo) {
-        case I104M_ASDU_SPECIAL_CMD: // special command
-            if (pmsg->endereco ==
-                I104M_SPECIAL_CMD_ADDR_REQ_GI) { // request general interrogation
-                I104M_Loga("R--> I104M: REQ GI");
-                queueProtocolCall([](QIec104* worker) { worker->solicitGI(); });
-            }
-            else if (pmsg->endereco == I104M_SPECIAL_CMD_ADDR_KEEP_ALIVE &&
-                (address.toString() == I104M_host_dual.toString() ||
-                    address.toString() == (QString("::ffff:") + I104M_host_dual.toString())) &&
-                s.ForcePrimary == 0) { // keep alive from the redundant computer
-                I104M_Loga("R--> I104M: KEEP ALIVE FROM REDUNDANT COMPUTER");
-                if (isPrimary) {
-                    I104M_Loga("     I104M: BECOMMING SECONDARY!");
-                    ui->lbMode->setText("<font color='red'>Secondary</font>");
-                }
-                isPrimary = false;
-                queueProtocolCall([](QIec104* worker) { worker->disable_connect(); });
-                I104M_CntDnToBePrimary =
-                    I104M_CntToBePrimary; // restart count to be primary
-            }
-            break;
-        case iec104_class::C_SC_TA_1: // single command with time tag
-        case iec104_class::C_SC_NA_1: // single command
-            sprintf(buf, "R--> I104M: Single Command %s", pmsg->onoff ? "on" : "off");
-            I104M_Loga(buf);
-            obj.sp = static_cast<unsigned char>(pmsg->onoff);
-            queueProtocolCommand(obj);
-            LastCommandAddress = obj.address;
-            break;
-        case iec104_class::C_DC_TA_1: // double command with time tag
-        case iec104_class::C_DC_NA_1: // double command
-            sprintf(buf, "R--> I104M: Double Command %s", pmsg->onoff ? "on" : "off");
-            I104M_Loga(buf);
-            obj.dp = pmsg->onoff ? 2 : 1;
-            queueProtocolCommand(obj);
-            LastCommandAddress = obj.address;
-            break;
-        case iec104_class::C_SE_TA_1: // set-point normalised command with time tag
-        case iec104_class::C_SE_NA_1: // set-point normalised command
-            sprintf(buf, "R--> I104M: set-point normalised command %f",
-                double(pmsg->setpoint));
-            I104M_Loga(buf);
-            obj.value = pmsg->setpoint;
-            queueProtocolCommand(obj);
-            LastCommandAddress = obj.address;
-            break;
-        case iec104_class::C_SE_TB_1: // set-point scaled command with time tag
-        case iec104_class::C_SE_NB_1: // set-point scaled command
-            sprintf(buf, "R--> I104M: set-point scaled command %f",
-                double(pmsg->setpoint));
-            I104M_Loga(buf);
-            obj.value = pmsg->setpoint;
-            queueProtocolCommand(obj);
-            LastCommandAddress = obj.address;
-            break;
-        case iec104_class::C_SE_TC_1: // set-point short floating point command with
-            // time tag
-        case iec104_class::C_SE_NC_1: // set-point short floating point command
-            sprintf(buf, "R--> I104M: set-point short floating command %f",
-                double(pmsg->setpoint));
-            I104M_Loga(buf);
-            obj.value = pmsg->setpoint;
-            queueProtocolCommand(obj);
-            LastCommandAddress = obj.address;
-            break;
-        case iec104_class::C_RC_TA_1: // regulating step command with time tag
-        case iec104_class::C_RC_NA_1: // regulating step command
-            sprintf(buf, "R--> I104M: regulating step command %s", pmsg->setpoint == 0 ? "LOWER" : "RAISE");
-            I104M_Loga(buf);
-            obj.rcs = pmsg->setpoint == 0 ? 1 : 2;
-            queueProtocolCommand(obj);
-            LastCommandAddress = obj.address;
-            break;
-        case iec104_class::C_BO_TA_1: // bitstring command with time tag
-        case iec104_class::C_BO_NA_1: // bitstring command
-            sprintf(buf, "R--> I104M: bitstring command %u", pmsg->setpoint_i32);
-            I104M_Loga(buf);
-            obj.value = pmsg->setpoint_i32;
-            queueProtocolCommand(obj);
-            LastCommandAddress = obj.address;
-            break;
-        }
-    }
+void MainWindow::on_pbSettingsDialog_clicked()
+{
+	auto dlg = new SettingsDialog(this);
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
+    connect(dlg, &SettingsDialog::settingsChanged, this, &MainWindow::reloadProtocolSettings);
+    dlg->show();
 }
 
 // Envio de comando
@@ -641,13 +421,6 @@ void MainWindow::on_pbSendCommandsButton_clicked()
     LastCommandAddress = obj.address;
 }
 
-void MainWindow::I104M_Loga(QString str, int id)
-{
-    if (I104M_Logar && id == 0) {
-        i104->mLog.pushMsg(const_cast<char*>(str.toStdString().c_str()), 0);
-    }
-}
-
 void MainWindow::slot_dataIndication(const QVector<iec_obj>& objects)
 {
     if (objects.isEmpty()) {
@@ -657,9 +430,8 @@ void MainWindow::slot_dataIndication(const QVector<iec_obj>& objects)
     pendingDataPointCount += objects.size();
     pendingDataIndications.enqueue(objects);
 
-    if (!tmUiDataPump->isActive()) {
+    if (!tmUiDataPump->isActive())
         tmUiDataPump->start(0);
-    }
 }
 
 void MainWindow::slot_processPendingUiData()
@@ -697,12 +469,10 @@ void MainWindow::slot_processPendingUiData()
         pointTableSortPending = false;
     }
 
-    if (pendingDataIndications.isEmpty()) {
+    if (pendingDataIndications.isEmpty())
         tmUiDataPump->stop();
-    }
-    else {
+    else
         tmUiDataPump->start(0);
-    }
 }
 
 void MainWindow::processDataIndicationBatch(const QVector<iec_obj>& objects)
@@ -719,8 +489,6 @@ void MainWindow::processDataIndicationBatch(const QVector<iec_obj>& objects)
     if (numpoints == 0) {
         return;
     }
-
-    I104M_processPoints(obj, numpoints);
 
     if (true/*ui->cbPointMap->isChecked()*/) {
         for (unsigned i = 0; i < numpoints; i++, obj++) {
@@ -936,10 +704,6 @@ void MainWindow::slot_timer_logmsg()
 {
     static const int maxLogMsgsPerTick = 250;
 
-    if (Hide)
-        if (window() && window()->isVisible())
-            window()->setVisible(false);
-
     // adjust size of rows and columns
     if (!(++logTickCount % 50))
         if (pointTableResizePending && pendingDataIndications.isEmpty()) {
@@ -994,44 +758,27 @@ void MainWindow::slot_interrogationActTermIndication() {}
 
 void MainWindow::slot_tcpconnect(const QString& peerAddress)
 {
-    //ui->leIPRemoto->setText(peerAddress);
-	statusBar()->showMessage("Соединение установлено с " + peerAddress);
-    ui->lbStatus->setText("<font color='green'> Соединение установлено!</font>");
+    m_lbStatus.setText("<font color='green'>" + QString("Соединение установлено c ") + peerAddress + "</font>" );
     ui->pbGI->setEnabled(true);
-    ui->pbSendCommandsButton->setEnabled(true);
+    ui->pbCopyVals->setEnabled(true);
+    ui->sendCommand->setEnabled(true);
     ui->pbConnect->setText("Отключить");
 }
 
 void MainWindow::slot_tcpdisconnect()
 {
-    if (I104M_HaveDualHost() && isPrimary == true) {
-        I104M_CntDnToBePrimary = I104M_CntToBePrimary + 1; 
-        // wait a little more time to be primary again to allow for the secondary to assume
-        isPrimary = false;
-        queueProtocolCall([](QIec104* worker) { worker->disable_connect(); });
-        I104M_Loga(" --- I104M: BECOMING SECONDARY BY DISCONNECTION");
-        ui->lbMode->setText("<font color='red'>Secondary</font>");
-    }
-
-    ui->lbStatus->setText("<font color='red'> Соединение отключено!</font>");
+    m_lbStatus.setText("<font color='red'> Соединение отключено!</font>");
     ui->pbGI->setEnabled(false);
-    ui->pbSendCommandsButton->setEnabled(false);
+    ui->pbCopyVals->setEnabled(false);
+    ui->sendCommand->setEnabled(false);
 
     if (ProtocolKeepAliveActive) {
         ui->pbConnect->setText("Прервать");
-        ui->lePort->setEnabled(false);
-        ui->ipAddress->setEnabled(false);
-        ui->ipAddressReserve->setEnabled(false);
-        ui->leLinkAddress->setEnabled(false);
-        ui->leMasterAddress->setEnabled(false);
+		ui->pbSettingsDialog->setEnabled(false);
     }
     else {
         ui->pbConnect->setText("Подключить");
-        ui->lePort->setEnabled(true);
-        ui->ipAddress->setEnabled(true);
-        ui->ipAddressReserve->setEnabled(true);
-        ui->leLinkAddress->setEnabled(true);
-        ui->leMasterAddress->setEnabled(true);
+        ui->pbSettingsDialog->setEnabled(true);
     }
 }
 
@@ -1059,7 +806,7 @@ void MainWindow::slot_commandActRespIndication(const iec_obj& obj)
     if (obj.address == 0)
         return;
 
-    auto& s = Application::instance().settings();
+    auto& s = AppSettings::instance();
 
     if (true/*ui->cbPointMap->isChecked()*/) {
         pitem = nullptr;
@@ -1224,73 +971,6 @@ void MainWindow::slot_commandActRespIndication(const iec_obj& obj)
                 executeObj.se = iec104_class::EXECUTE;
                 queueProtocolCommand(executeObj);
             }
-
-            // respond to I104M only if it's not a select or if its a negative
-            // response
-            if ((is_select == false || obj.pn == iec104_class::NEGATIVE) && udps) {
-                t_msgsup I104M_msg;
-                I104M_msg.signature = MSGSUP_SIG;
-                I104M_msg.tipo = obj.type;
-                I104M_msg.endereco = obj.address;
-                I104M_msg.sec = obj.ca;
-                I104M_msg.prim = unsigned(s.OA);
-                // mask cause, and p/n result to bit 6 1=NEG 0=POS
-                I104M_msg.causa = unsigned(
-                    obj.cause | (((obj.pn == iec104_class::NEGATIVE) ? 1 : 0) << 6));
-
-                switch (obj.type) {
-                case iec104_class::C_SC_NA_1:
-                case iec104_class::C_SC_TA_1:
-                    I104M_msg.taminfo = 1;
-                    I104M_msg.info[0] = obj.scs;
-                    break;
-                case iec104_class::C_DC_NA_1:
-                case iec104_class::C_DC_TA_1:
-                    I104M_msg.taminfo = 1;
-                    I104M_msg.info[0] = obj.dcs;
-                    break;
-                case iec104_class::C_RC_NA_1:
-                case iec104_class::C_RC_TA_1:
-                    I104M_msg.taminfo = 1;
-                    I104M_msg.info[0] = obj.rcs;
-                    break;
-                case iec104_class::C_SE_NA_1:
-                case iec104_class::C_SE_TA_1:
-                    I104M_msg.taminfo = 4;
-                    *(reinterpret_cast<float*>(&I104M_msg.info)) = obj.value;
-                    break;
-
-                case iec104_class::C_SE_NB_1:
-                case iec104_class::C_SE_TB_1:
-                    I104M_msg.taminfo = 4;
-                    *(reinterpret_cast<float*>(&I104M_msg.info)) = obj.value;
-                    break;
-
-                case iec104_class::C_SE_NC_1:
-                case iec104_class::C_SE_TC_1:
-                    I104M_msg.taminfo = 4;
-                    *(reinterpret_cast<float*>(&I104M_msg.info)) = obj.value;
-                    break;
-
-                case iec104_class::C_BO_NA_1:
-                case iec104_class::C_BO_TA_1:
-                    I104M_msg.taminfo = 4;
-                    *(reinterpret_cast<uint32_t*>(&I104M_msg.info)) =
-                        uint32_t(obj.value);
-                    break;
-                }
-                if (obj.pn == iec104_class::NEGATIVE) {
-                    I104M_Loga("T<-- I104M: COMMAND REJECTED BY IEC104 SLAVE");
-                }
-                else {
-                    I104M_Loga("T<-- I104M: COMMAND ACCEPTED BY IEC104 SLAVE");
-                }
-                udps->writeDatagram(reinterpret_cast<char*>(&I104M_msg),
-                    sizeof(I104M_msg), I104M_host, I104M_porta);
-                if (I104M_HaveDualHost())
-                    udps->writeDatagram(reinterpret_cast<char*>(&I104M_msg),
-                        sizeof(I104M_msg), I104M_host_dual, I104M_porta);
-            }
         }
 }
 
@@ -1300,47 +980,12 @@ void MainWindow::closeEvent(QCloseEvent* event)
     event->accept();
 }
 
-void MainWindow::slot_timer_I104M_kamsg()
-{
-    if (!udps)
-        return;
-
-    if (!isPrimary) {
-        if (I104M_CntDnToBePrimary <= 0) {
-            isPrimary = true;
-            queueProtocolCall([](QIec104* worker) {
-                worker->enable_connect();
-                worker->tmKeepAlive->start();
-                });
-            I104M_CntDnToBePrimary = I104M_CntToBePrimary;
-            I104M_Loga(" --- I104M: BECOMING PRIMARY BY TIMEOUT");
-            ui->lbMode->setText("<font color='green'>Основной</font>");
-        }
-        else
-            I104M_CntDnToBePrimary--;
-    }
-
-    if (isPrimary) {
-        // send keepalive message to the dual host
-        t_msgcmd i104M_msg;
-        i104M_msg.signature = MSGCMD_SIG;
-        i104M_msg.tipo = I104M_ASDU_SPECIAL_CMD;
-        i104M_msg.endereco = I104M_SPECIAL_CMD_ADDR_KEEP_ALIVE;
-        i104M_msg.setpoint_i32 = 0;
-        i104M_msg.sbo = 0;
-        i104M_msg.qu = 0;
-        i104M_msg.utr = 0;
-        udps->writeDatagram(reinterpret_cast<char*>(&i104M_msg), sizeof(i104M_msg),
-            I104M_host_dual, I104M_porta_escuta);
-    }
-}
-
 void MainWindow::on_cbLog_clicked()
 {
     if (ui->cbLog->isChecked()) {
         i104->mLog.activateLog();
         QDate dt = QDate::currentDate();
-        QString str = dt.toString() + QString(" - ") + QString(QTESTER_VERSION);
+        QString str = dt.toString() + QString(" - ") + QString(VERSION);
         i104->mLog.pushMsg(str.toStdString().c_str());
     }
     else
@@ -1366,337 +1011,6 @@ void MainWindow::on_pbCopyVals_clicked()
     QApplication::clipboard()->setText(text);
 }
 
-void MainWindow::I104M_processPoints(const iec_obj* obj, unsigned numpoints)
-{
-    if (!udps || numpoints == 0)
-        return;
-
-    t_msgsupsq msg;
-
-    auto& s = Application::instance().settings();
-
-    switch (obj->type) {
-    case iec104_class::M_DP_TB_1:
-    { // double state with time tag
-        msg.signature = MSGSUPSQ_SIG;
-        msg.tipo = obj->type;
-        msg.prim = static_cast<uint32_t>(s.OA);
-        msg.sec = obj->ca;
-        msg.causa = obj->cause;
-        msg.taminfo = sizeof(digital_w_time7_seq);
-        msg.numpoints = static_cast<uint32_t>(numpoints);
-
-        for (unsigned count = 0; count < numpoints; count++, obj++) {
-            uint32_t* paddr = reinterpret_cast<uint32_t*>(
-                msg.info + count * (sizeof(int32_t) + sizeof(digital_w_time7_seq)));
-            *paddr = obj->address;
-
-            // value and qualifier
-            digital_w_time7_seq* i104mobj =
-                reinterpret_cast<digital_w_time7_seq*>(paddr + 1);
-            i104mobj->iq =
-                static_cast<unsigned char>(obj->dp | (obj->bl << 4) | (obj->sb << 5) |
-                    (obj->nt << 6) | (obj->iv << 7));
-            i104mobj->ano = obj->timetag.year;
-            i104mobj->mes = obj->timetag.month;
-            i104mobj->dia = obj->timetag.mday;
-            i104mobj->hora = obj->timetag.hour;
-            i104mobj->min = obj->timetag.min;
-            i104mobj->ms = obj->timetag.msec;
-        }
-
-        SendOSHMI(reinterpret_cast<char*>(&msg),
-            sizeof(int32_t) * 7 +
-            msg.numpoints *
-            (sizeof(int32_t) + sizeof(digital_w_time7_seq)));
-    } break;
-    case iec104_class::M_SP_TB_1:
-    { // single state with time tag
-        msg.signature = MSGSUPSQ_SIG;
-        msg.tipo = obj->type;
-        msg.prim = static_cast<uint32_t>(s.OA);
-        msg.sec = obj->ca;
-        msg.causa = obj->cause;
-        msg.taminfo = sizeof(digital_w_time7_seq);
-        msg.numpoints = static_cast<uint32_t>(numpoints);
-
-        for (unsigned count = 0; count < numpoints; count++, obj++) {
-            uint32_t* paddr = reinterpret_cast<uint32_t*>(
-                msg.info + count * (sizeof(int32_t) + sizeof(digital_w_time7_seq)));
-            *paddr = obj->address;
-
-            // value and qualifier
-            digital_w_time7_seq* i104mobj =
-                reinterpret_cast<digital_w_time7_seq*>(paddr + 1);
-            i104mobj->iq =
-                static_cast<unsigned char>(obj->sp | (obj->bl << 4) | (obj->sb << 5) |
-                    (obj->nt << 6) | (obj->iv << 7));
-            i104mobj->ano = obj->timetag.year;
-            i104mobj->mes = obj->timetag.month;
-            i104mobj->dia = obj->timetag.mday;
-            i104mobj->hora = obj->timetag.hour;
-            i104mobj->min = obj->timetag.min;
-            i104mobj->ms = obj->timetag.msec;
-        }
-
-        SendOSHMI(reinterpret_cast<char*>(&msg),
-            sizeof(int32_t) * 7 +
-            msg.numpoints *
-            (sizeof(int32_t) + sizeof(digital_w_time7_seq)));
-    } break;
-    case iec104_class::M_DP_NA_1:
-    { // double state without time tag
-        msg.signature = MSGSUPSQ_SIG;
-        msg.tipo = obj->type;
-        msg.prim = static_cast<uint32_t>(s.OA);
-        msg.sec = obj->ca;
-        msg.causa = obj->cause;
-        msg.taminfo = sizeof(digital_notime_seq);
-        msg.numpoints = static_cast<uint32_t>(numpoints);
-
-        for (unsigned count = 0; count < numpoints; count++, obj++) {
-            uint32_t* paddr = reinterpret_cast<uint32_t*>(
-                msg.info + count * (sizeof(int32_t) + sizeof(digital_notime_seq)));
-            *paddr = obj->address;
-
-            // value and qualifier
-            digital_notime_seq* i104mobj =
-                reinterpret_cast<digital_notime_seq*>(paddr + 1);
-            i104mobj->iq =
-                static_cast<unsigned char>(obj->dp | (obj->bl << 4) | (obj->sb << 5) |
-                    (obj->nt << 6) | (obj->iv << 7));
-        }
-
-        SendOSHMI(reinterpret_cast<char*>(&msg),
-            sizeof(int32_t) * 7 +
-            msg.numpoints *
-            (sizeof(int32_t) + sizeof(digital_notime_seq)));
-    } break;
-    case iec104_class::M_SP_NA_1:
-    { // single state without time tag
-        msg.signature = MSGSUPSQ_SIG;
-        msg.tipo = obj->type;
-        msg.prim = static_cast<uint32_t>(s.OA);
-        msg.sec = obj->ca;
-        msg.causa = obj->cause;
-        msg.taminfo = sizeof(digital_notime_seq);
-        msg.numpoints = static_cast<uint32_t>(numpoints);
-
-        for (unsigned count = 0; count < numpoints; count++, obj++) {
-            uint32_t* paddr = reinterpret_cast<uint32_t*>(
-                msg.info + count * (sizeof(int) + sizeof(digital_notime_seq)));
-            *paddr = obj->address;
-
-            // value and qualifier
-            digital_notime_seq* i104mobj =
-                reinterpret_cast<digital_notime_seq*>(paddr + 1);
-            i104mobj->iq =
-                static_cast<unsigned char>(obj->sp | (obj->bl << 4) | (obj->sb << 5) |
-                    (obj->nt << 6) | (obj->iv << 7));
-        }
-
-        SendOSHMI(reinterpret_cast<char*>(&msg),
-            sizeof(int32_t) * 7 +
-            msg.numpoints *
-            (sizeof(int32_t) + sizeof(digital_notime_seq)));
-    } break;
-
-    case iec104_class::M_ST_TB_1:   // 32 = step with time tag (will ignore time)
-    case iec104_class::M_ST_NA_1:
-    { // 5 = step without time tag
-        msg.signature = MSGSUPSQ_SIG;
-        msg.tipo = iec104_class::M_ST_NA_1;
-        msg.prim = static_cast<uint32_t>(s.OA);
-        msg.sec = obj->ca;
-        msg.causa = obj->cause;
-        msg.taminfo = sizeof(step_seq);
-        msg.numpoints = static_cast<uint32_t>(numpoints);
-
-        for (unsigned count = 0; count < numpoints; count++, obj++) {
-            uint32_t* paddr = reinterpret_cast<uint32_t*>(
-                msg.info + count * (sizeof(int32_t) + sizeof(step_seq)));
-            *paddr = obj->address;
-
-            // value and qualifier
-            step_seq* i104mobj = reinterpret_cast<step_seq*>(paddr + 1);
-            i104mobj->qds =
-                static_cast<unsigned char>(obj->ov | (obj->bl << 4) | (obj->sb << 5) |
-                    (obj->nt << 6) | (obj->iv << 7));
-            i104mobj->vti = static_cast<unsigned char>(obj->value) |
-                static_cast<unsigned char>(obj->t << 7);
-        }
-
-        SendOSHMI(reinterpret_cast<char*>(&msg),
-            sizeof(int32_t) * 7 +
-            msg.numpoints * (sizeof(int32_t) + sizeof(step_seq)));
-    } break;
-
-    case iec104_class::M_ME_TD_1:   // 34 = normalized with time tag
-    case iec104_class::M_ME_NA_1:
-    { // 9 = normalized without time tag
-        msg.signature = MSGSUPSQ_SIG;
-        msg.tipo = iec104_class::M_ME_NA_1;
-        msg.prim = static_cast<uint32_t>(s.OA);
-        msg.sec = obj->ca;
-        msg.causa = obj->cause;
-        msg.taminfo = sizeof(analogico_seq);
-        msg.numpoints = static_cast<uint32_t>(numpoints);
-
-        for (unsigned count = 0; count < numpoints; count++, obj++) {
-            uint32_t* paddr = reinterpret_cast<uint32_t*>(
-                msg.info + count * (sizeof(int32_t) + sizeof(analogico_seq)));
-            *paddr = obj->address;
-
-            // value and qualifier
-            analogico_seq* i104mobj = reinterpret_cast<analogico_seq*>(paddr + 1);
-            i104mobj->qds =
-                static_cast<unsigned char>(obj->ov | (obj->bl << 4) | (obj->sb << 5) |
-                    (obj->nt << 6) | (obj->iv << 7));
-            i104mobj->sva = static_cast<short>(obj->value);
-        }
-
-        SendOSHMI(reinterpret_cast<char*>(&msg),
-            sizeof(int32_t) * 7 +
-            msg.numpoints * (sizeof(int32_t) + sizeof(analogico_seq)));
-    } break;
-
-    case iec104_class::M_ME_TE_1:   // 35 = scaled with time tag
-    case iec104_class::M_ME_NB_1:
-    { // 11 = scaled without time tag
-        msg.signature = MSGSUPSQ_SIG;
-        msg.tipo = iec104_class::M_ME_NB_1;
-        msg.prim = static_cast<uint32_t>(s.OA);
-        msg.sec = obj->ca;
-        msg.causa = obj->cause;
-        msg.taminfo = sizeof(analogico_seq);
-        msg.numpoints = static_cast<uint32_t>(numpoints);
-
-        for (unsigned count = 0; count < numpoints; count++, obj++) {
-            uint32_t* paddr = reinterpret_cast<uint32_t*>(
-                msg.info + count * (sizeof(int32_t) + sizeof(analogico_seq)));
-            *paddr = obj->address;
-
-            // value and qualifier
-            analogico_seq* i104mobj = reinterpret_cast<analogico_seq*>(paddr + 1);
-            i104mobj->qds =
-                static_cast<unsigned char>(obj->ov | (obj->bl << 4) | (obj->sb << 5) |
-                    (obj->nt << 6) | (obj->iv << 7));
-            i104mobj->sva = static_cast<short>(obj->value);
-        }
-
-        SendOSHMI(reinterpret_cast<char*>(&msg),
-            sizeof(int32_t) * 7 +
-            msg.numpoints * (sizeof(int32_t) + sizeof(analogico_seq)));
-    } break;
-
-    case iec104_class::M_ME_TF_1:   // 36 = float with time tag
-    case iec104_class::M_ME_NC_1:
-    { // 13 = float without time tag
-        msg.signature = MSGSUPSQ_SIG;
-        msg.tipo = iec104_class::M_ME_NC_1;
-        msg.prim = static_cast<uint32_t>(s.OA);
-        msg.sec = obj->ca;
-        msg.causa = obj->cause;
-        msg.taminfo = sizeof(flutuante_seq);
-        msg.numpoints = static_cast<uint32_t>(numpoints);
-
-        for (unsigned count = 0; count < numpoints; count++, obj++) {
-            uint32_t* paddr = reinterpret_cast<uint32_t*>(
-                msg.info + count * (sizeof(int32_t) + sizeof(flutuante_seq)));
-            *paddr = obj->address;
-
-            // value and qualifier
-            flutuante_seq* i104mobj = reinterpret_cast<flutuante_seq*>(paddr + 1);
-            i104mobj->qds =
-                static_cast<unsigned char>(obj->ov | (obj->bl << 4) | (obj->sb << 5) |
-                    (obj->nt << 6) | (obj->iv << 7));
-            i104mobj->fr = obj->value;
-        }
-
-        SendOSHMI(reinterpret_cast<char*>(&msg),
-            sizeof(int32_t) * 7 +
-            msg.numpoints * (sizeof(int32_t) + sizeof(flutuante_seq)));
-    } break;
-
-    case iec104_class::M_IT_TB_1:   // 37 = integrated totals with time tag
-    case iec104_class::M_IT_NA_1:
-    { // 15 = integrated totals without time tag
-        msg.signature = MSGSUPSQ_SIG;
-        msg.tipo = iec104_class::M_IT_NA_1;
-        msg.prim = static_cast<uint32_t>(s.OA);
-        msg.sec = obj->ca;
-        msg.causa = obj->cause;
-        msg.taminfo = sizeof(integrated_seq);
-        msg.numpoints = static_cast<uint32_t>(numpoints);
-
-        for (unsigned count = 0; count < numpoints; count++, obj++) {
-            uint32_t* paddr = reinterpret_cast<uint32_t*>(
-                msg.info + count * (sizeof(int32_t) + sizeof(integrated_seq)));
-            *paddr = obj->address;
-
-            // value and qualifier
-            integrated_seq* i104mobj = reinterpret_cast<integrated_seq*>(paddr + 1);
-            // map carry to overflow (bit 0), adjusted to nt (bit 6), invalid to bit 7
-            i104mobj->qds = static_cast<unsigned char>(
-                obj->cy | (obj->cadj << 6) | (obj->iv << 7));
-            i104mobj->bcr = obj->bcr;
-        }
-
-        SendOSHMI(reinterpret_cast<char*>(&msg),
-            sizeof(int32_t) * 7 +
-            msg.numpoints * (sizeof(int32_t) + sizeof(integrated_seq)));
-    } break;
-    case iec104_class::M_BO_TB_1: // 33 = bitstring of 32 bits with time tag (will
-        // send as counter)
-    case iec104_class::M_BO_NA_1:
-    { // 7 = bitstring of 32 bits (will send as
-     // counter)
-// note: bitstring could also possibly be interpreted as 32 single binary
-// states in sequence I opt to use counter to avoid possible address
-// conflict for bitstrings in sequence of addresses
-        msg.signature = MSGSUPSQ_SIG;
-        msg.tipo = iec104_class::M_IT_NA_1;
-        msg.prim = static_cast<uint32_t>(s.OA);
-        msg.sec = obj->ca;
-        msg.causa = obj->cause;
-        msg.taminfo = sizeof(integrated_seq);
-        msg.numpoints = static_cast<uint32_t>(numpoints);
-
-        for (unsigned count = 0; count < numpoints; count++, obj++) {
-            uint32_t* paddr = reinterpret_cast<uint32_t*>(
-                msg.info + count * (sizeof(int32_t) + sizeof(integrated_seq)));
-            *paddr = obj->address;
-
-            // value as counter and no qualifier
-            integrated_seq* i104mobj = reinterpret_cast<integrated_seq*>(paddr + 1);
-            i104mobj->qds = 0;
-            i104mobj->bcr = obj->bsi.bsi;
-        }
-
-        SendOSHMI(reinterpret_cast<char*>(&msg),
-            sizeof(int32_t) * 7 +
-            msg.numpoints * (sizeof(int32_t) + sizeof(integrated_seq)));
-    } break;
-    default:
-        i104->mLog.pushMsg(
-            "R--> IEC104 UNSUPPORTED TYPE, NOT FORWARDED TO I104M/OSHMI");
-        break;
-    }
-}
-
-void MainWindow::SendOSHMI(char* msg, uint32_t packet_size)
-{
-    if (udps == nullptr) {
-        return;
-    }
-
-    udps->writeDatagram(reinterpret_cast<const char*>(msg), packet_size,
-        I104M_host, I104M_porta);
-    if (I104M_HaveDualHost())
-        udps->writeDatagram(reinterpret_cast<const char*>(msg), packet_size,
-            I104M_host_dual, I104M_porta);
-}
-
 void MainWindow::fmtCP56Time(char* buf, const cp56time2a* timetag)
 {
     if (timetag->month == 0 || timetag->mday == 0)
@@ -1716,12 +1030,15 @@ void MainWindow::on_cbTheme_currentIndexChanged(int index)
         darkPalette.setColor(QPalette::Window, QColor(53, 53, 53));
         darkPalette.setColor(QPalette::WindowText, Qt::white);
         darkPalette.setColor(QPalette::Base, QColor(25, 25, 25));
+        darkPalette.setColor(QPalette::Disabled, QPalette::Base, QColor(45, 45, 45));
         darkPalette.setColor(QPalette::AlternateBase, QColor(53, 53, 53));
         darkPalette.setColor(QPalette::ToolTipBase, Qt::white);
         darkPalette.setColor(QPalette::ToolTipText, Qt::white);
         darkPalette.setColor(QPalette::Text, Qt::white);
+        darkPalette.setColor(QPalette::Disabled, QPalette::Text, QColor(120, 120, 120));
         darkPalette.setColor(QPalette::Button, QColor(53, 53, 53));
         darkPalette.setColor(QPalette::ButtonText, Qt::white);
+        darkPalette.setColor(QPalette::Disabled, QPalette::ButtonText, QColor(100, 100, 100));
         darkPalette.setColor(QPalette::BrightText, Qt::red);
         darkPalette.setColor(QPalette::Link, QColor(42, 130, 218));
         darkPalette.setColor(QPalette::Highlight, QColor(42, 130, 218));

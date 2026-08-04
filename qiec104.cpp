@@ -1,4 +1,4 @@
-#include "qiec104.h"
+#include "QIec104.h"
 
 #include <cstdio>
 #include <qabstractsocket.h>
@@ -12,7 +12,7 @@
 #include <qtcpsocket.h>
 #include <qtimer.h>
 #include <qvector.h>
-#include <string.h>
+#include <string>
 #include "iec104/iec104_class.h"
 
 QIec104::QIec104(QObject* parent) : QObject(parent)
@@ -23,14 +23,11 @@ QIec104::QIec104(QObject* parent) : QObject(parent)
     tcps = new QTcpSocket(this);
     tmKeepAlive = new QTimer(this);
 
-    connect(tmKeepAlive, SIGNAL(timeout()), this, SLOT(slot_keep_alive()));
-    connect(tcps, SIGNAL(readyRead()), this, SLOT(slot_tcpreadytoread()));
-    connect(tcps, SIGNAL(connected()), this, SLOT(slot_tcpconnect()));
-    connect(tcps, SIGNAL(disconnected()), this, SLOT(slot_tcpdisconnect()));
-    connect(tcps, SIGNAL(errorOccurred(QAbstractSocket::SocketError)), this,
-        SLOT(slot_tcperror(QAbstractSocket::SocketError)),
-        Qt::DirectConnection);
-
+    connect(tmKeepAlive, &QTimer::timeout, this, &QIec104::slot_keep_alive);
+    connect(tcps, &QTcpSocket::readyRead, this, &QIec104::slot_tcpreadytoread);
+    connect(tcps, &QTcpSocket::connected, this, &QIec104::slot_tcpconnect);
+    connect(tcps, &QTcpSocket::disconnected, this, &QIec104::slot_tcpdisconnect);
+    connect(tcps, &QTcpSocket::errorOccurred, this, &QIec104::slot_tcperror, Qt::DirectConnection);
     connect(tcps, &QTcpSocket::errorOccurred, this, &QIec104::slot_socketError);
 }
 
@@ -63,11 +60,9 @@ void QIec104::connectTCP()
     if (!mEnding && mAllowConnect) {
         // alternate main and backup UTR IP address, if configured
         if ((++mConnectAttemptCounter) % 2 || strcmp(getSecondaryIP_backup(), "0.0.0.0") == 0) {
-
             tcps->connectToHost(getSecondaryIP(), quint16(getPortTCP()), QIODevice::ReadWrite);
             sprintf(buf, "Try to connect IP: %s", getSecondaryIP());
             mLog.pushMsg(const_cast<char*>(buf));
-
         }
         else {
             tcps->connectToHost(getSecondaryIP_backup(), quint16(getPortTCP()), QIODevice::ReadWrite);

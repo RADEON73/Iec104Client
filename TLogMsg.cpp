@@ -1,17 +1,11 @@
-#include "logmsg.h"
+#include "TLogMsg.h"
 
 #include <ctime>
 #include <qmutex.h>
 #include <string>
 
-TLogMsg::TLogMsg()
-{
-    mMaxMsg = 1000;
-    mDoLog = true;
-    mRegTime = false;
-    mLastTime = 0;
-    mLevel = 0;
-}
+TLogMsg::TLogMsg() = default;
+TLogMsg::~TLogMsg() = default;
 
 void TLogMsg::setMaxMsg(unsigned int maxmsg)
 {
