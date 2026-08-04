@@ -11,8 +11,6 @@
 #include <string.h>
 #include "iec104_types.h"
 
-using namespace std;
-
 iec104_class::iec104_class()
 {
     memset(slaveIP, 0, sizeof(slaveIP));
@@ -156,10 +154,10 @@ iec104_class::iec104_class()
     gi_period = 5 * 60 + 30;
 }
 
-string iec104_class::asduTiStr(int ti)
+std::string iec104_class::asduTiStr(int ti)
 {
-    string s = "";
-    map<int, string>::const_iterator iter = mapTiStr.find(ti);
+    std::string s = "";
+    std::map<int, std::string>::const_iterator iter = mapTiStr.find(ti);
     if (iter != mapTiStr.end()) {
         s = iter->second;
     }
@@ -170,10 +168,10 @@ string iec104_class::asduTiStr(int ti)
     return s;
 }
 
-string iec104_class::causeStr(int cause)
+std::string iec104_class::causeStr(int cause)
 {
-    string s = "COT_?";
-    map<int, string>::const_iterator iter = mapCauseStr.find(cause);
+    std::string s = "COT_?";
+    std::map<int, std::string>::const_iterator iter = mapCauseStr.find(cause);
     if (iter != mapCauseStr.end()) {
         s = iter->second;
     }
@@ -616,8 +614,8 @@ static int infoElementSize(unsigned char type)
 void iec104_class::parseAPDU(iec_apdu* papdu, int sz, bool accountandrespond)
 {
     iec_apdu wapdu;      // buffer to assemble apdu to send
-    string qs, qsa;
-    stringstream oss;
+    std::string qs, qsa;
+    std::stringstream oss;
     unsigned short VR_NEW;
 
     if (papdu->start != START) {
@@ -2667,7 +2665,7 @@ void iec104_class::parseAPDU(iec_apdu* papdu, int sz, bool accountandrespond)
 
 void iec104_class::sendSupervisory()
 {
-    stringstream oss;
+    std::stringstream oss;
     iec_apdu apdu;
 
     apdu.start = START;
@@ -2677,7 +2675,7 @@ void iec104_class::sendSupervisory()
     sendTCP(reinterpret_cast<char*>(&apdu), 6);
 
     oss.str("");
-    oss.setf(ios::hex, ios::basefield);
+    oss.setf(std::ios::hex, std::ios::basefield);
     oss << "     SUPERVISORY " << VR;
     mLog.pushMsg(oss.str().c_str());
 }
@@ -2687,7 +2685,7 @@ bool iec104_class::sendCommand(iec_obj* obj)
     iec_apdu apducmd;
     time_t tm1 = time(nullptr);
     tm* agora = localtime(&tm1);
-    stringstream oss;
+    std::stringstream oss;
 
     obj->cause = ACTIVATION;
 

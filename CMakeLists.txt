@@ -27,33 +27,31 @@ endif()
 
 set(SOURCES
     main.cpp
-    appwindow.cpp
     mainwindow.cpp
+    application.cpp
 	logmsg.cpp
-    iec104_class.cpp
+    iec104/iec104_class.cpp
     qiec104.cpp
 )
 
 set(HEADERS
-    appwindow.h
     mainwindow.h
+    application.h
 	logmsg.h
-    iec104_class.h
     qiec104.h
+    iec104/iec104_class.h
+    iec104/iec104_types.h
+    iec104/iec104.h
 )
 
 set(FORMS
     mainwindow.ui
 )
 
-set(OTHER_FILES
-)
-
 add_executable(${PROJECT_NAME}
     ${SOURCES}
     ${HEADERS}
     ${FORMS}
-    ${OTHER_FILES}
 )
 
 if(WIN32)
@@ -66,8 +64,4 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
         Qt5::Widgets
         Qt5::Network
-)
-
-target_include_directories(Iec104Client SYSTEM PRIVATE
-    ${CMAKE_SOURCE_DIR}/qtester104
 )

@@ -2,13 +2,13 @@
 #include <cstdint>
 #include <functional>
 #include <map>
+#include <memory>
 #include <qglobal.h>
 #include <qhostaddress.h>
 #include <qmainwindow.h>
 #include <qobjectdefs.h>
 #include <qqueue.h>
 #include <qstring.h>
-#include <qstringliteral.h>
 #include <qtablewidget.h>
 #include <qthread.h>
 #include <qtimer.h>
@@ -16,13 +16,11 @@
 #include <qvector.h>
 #include <qwidget.h>
 #include <utility>
-#include "iec104_class.h"
-#include "iec104_types.h"
+#include "iec104/iec104_class.h"
+#include "iec104/iec104_types.h"
 #include "qiec104.h"
 
 constexpr auto QTESTER_VERSION = "v3.1.0";
-constexpr auto CURDIRINIFILENAME = "/qtester104.ini";
-constexpr auto CONFDIRINIFILENAME = "../conf/qtester104.ini";
 
 namespace Ui
 {
@@ -37,10 +35,7 @@ protected:
     void closeEvent(QCloseEvent* event);
 
 public:
-    MainWindow(const QString& iniPath = QString(),
-        const QString& rtuSection = QStringLiteral("RTU1"),
-        bool enableI104M = true,
-        QWidget* parent = nullptr);
+    MainWindow(QWidget* parent = nullptr);
     ~MainWindow();
 
 private slots:
@@ -80,43 +75,35 @@ private:
     std::map <std::pair<int, int>, QTableWidgetItem*> mapPtItem_ColCount;
     std::map <std::pair<int, int>, QTableWidgetItem*> mapPtItem_ColTimeTag;
 
-    Ui::MainWindow* ui;
-    QTimer* tmLogMsg; // timer to show log messages
-    QTimer* tmUiDataPump; // timer to batch UI point updates
-    QIec104* i104;
+    std::unique_ptr<Ui::MainWindow> ui;
+    QTimer* tmLogMsg = nullptr; // timer to show log messages
+    QTimer* tmUiDataPump = nullptr; // timer to batch UI point updates
+    QIec104* i104 = nullptr;
     QThread protocolThread;
     QQueue<QVector<iec_obj>> pendingDataIndications;
-    qsizetype pendingDataPointCount;
-    bool pointTableSortPending;
-    bool pointTableResizePending;
-    int logTickCount;
+    qsizetype pendingDataPointCount = 0;
+    bool pointTableSortPending = false;
+    bool pointTableResizePending = false;
+    int logTickCount = 0;
 
-    unsigned LastCommandAddress;
-    int SendCommands;             // 1 = allow sending commands, 0 = don't send commands
-    int Hide;
-    int PrimaryAddress;
-    int SecondaryAddress;
-    int ForcePrimary;
-    bool ProtocolKeepAliveActive;
-    bool ProtocolShutdown;
-    QString SecondaryIp;
-    QString IniPath;
-    QString RtuSection;
-    unsigned ProtocolPort;
-    bool EnableI104M;
+    unsigned LastCommandAddress = 0;
+    int Hide = 0;
+
+    bool ProtocolKeepAliveActive = false;
+    bool ProtocolShutdown = false;
 
     // I104M Related
     void I104M_Loga(QString str, int id = 0); // I104M: log messages
     void I104M_processPoints(const iec_obj* obj, unsigned numpoints);   // I104M: process points
     inline bool I104M_HaveDualHost() { return (I104M_host_dual != QHostAddress("0.0.0.0")); }
     QHostAddress I104M_host; // IP address from OSHMI main machine
-    QHostAddress I104M_host_dual; // OSHMI dual host address (the other machine)
+    QHostAddress I104M_host_dual; // OSHMI dual host address (the other machine) ПОИДЕЕ НАДО АДАПТИРОВАТЬ ПОД ВТОРОЙ СЕРВЕР
     static const int I104M_porta = 8099; // UDP port to send data to OSHMI
     static const int I104M_porta_escuta = 8098; // udp port to receive commands from OSHMI
     static const int I104M_CntToBePrimary = 3; // counts necessary to be primary when not receiving keepalive messages
     static const int I104M_seconds_kamsg = 7; // period of keepalive messages
     int I104M_CntDnToBePrimary = 0; // countdown to be primary when not receiving keepalive messages
-    int I104M_Logar = 0; // controls log of I104M messages
+    int I104M_Logar = 1; // controls log of I104M messages
     bool isPrimary; // primary or secondary redundant mode
     QUdpSocket* udps = nullptr; // I104M: udp socket
     QTimer* tmI104M_kamsg = nullptr; // timer to send keep alive messages to the dual host

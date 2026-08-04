@@ -4,8 +4,6 @@
 #include <qmutex.h>
 #include <string>
 
-using namespace std;
-
 TLogMsg::TLogMsg()
 {
     mMaxMsg = 1000;
@@ -86,13 +84,13 @@ int TLogMsg::count()
 }
 
 // Tira mensagem da fila
-string TLogMsg::pullMsg()
+std::string TLogMsg::pullMsg()
 {
     QMutexLocker locker(&mMutex);
     if ( mLstLog.empty() || !mDoLog )
         return "";
 
-    string s = mLstLog.front();   // pega a primeira da fila
+    std::string s = mLstLog.front();   // pega a primeira da fila
     mLstLog.pop_front();          // retira-a da fila
 
     // se tem registro de hora, pega a hora e formata para exibir antes da mensagem

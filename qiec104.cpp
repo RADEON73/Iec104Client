@@ -2,11 +2,9 @@
 
 #include <cstdio>
 #include <qabstractsocket.h>
-#include <qfile.h>
 #include <qglobal.h>
 #include <qhostaddress.h>
 #include <qiodevice.h>
-#include <qlist.h>
 #include <qnamespace.h>
 #include <qobject.h>
 #include <qobjectdefs.h>
@@ -15,16 +13,10 @@
 #include <qtimer.h>
 #include <qvector.h>
 #include <string.h>
-#include "iec104_class.h"
+#include "iec104/iec104_class.h"
 
 QIec104::QIec104(QObject* parent) : QObject(parent)
 {
-    mEnding = false;
-    mAllowConnect = true;
-    mConnectAttemptCounter = 0;
-    mKeepAliveCounter = 1;
-    SendCommands = 0;
-    ForcePrimary = 0;
     mLog.activateLog();
     mLog.doLogTime();
 
@@ -34,8 +26,6 @@ QIec104::QIec104(QObject* parent) : QObject(parent)
     connect(tmKeepAlive, SIGNAL(timeout()), this, SLOT(slot_keep_alive()));
     connect(tcps, SIGNAL(readyRead()), this, SLOT(slot_tcpreadytoread()));
     connect(tcps, SIGNAL(connected()), this, SLOT(slot_tcpconnect()));
-    connect(tcps, SIGNAL(modeChanged(QSslSocket::SslMode)), this,
-        SLOT(slot_modeChanged(QSslSocket::SslMode)));
     connect(tcps, SIGNAL(disconnected()), this, SLOT(slot_tcpdisconnect()));
     connect(tcps, SIGNAL(errorOccurred(QAbstractSocket::SocketError)), this,
         SLOT(slot_tcperror(QAbstractSocket::SocketError)),
@@ -69,10 +59,10 @@ void QIec104::connectTCP()
     char buf[100];
 
     tcps->abort();
-    if (!mEnding && mAllowConnect) {
 
+    if (!mEnding && mAllowConnect) {
         // alternate main and backup UTR IP address, if configured
-        if ((++mConnectAttemptCounter) % 2 || strcmp(getSecondaryIP_backup(), "") == 0) {
+        if ((++mConnectAttemptCounter) % 2 || strcmp(getSecondaryIP_backup(), "0.0.0.0") == 0) {
 
             tcps->connectToHost(getSecondaryIP(), quint16(getPortTCP()), QIODevice::ReadWrite);
             sprintf(buf, "Try to connect IP: %s", getSecondaryIP());
@@ -128,15 +118,6 @@ void QIec104::slot_tcpconnect()
     emit signal_tcp_connect(tcps->peerAddress().toString());
 }
 
-/*
-void QIec104::slot_modeChanged(QSslSocket::SslMode mode)
-{
-    if (mode == QSslSocket::SslClientMode) {
-        mLog.pushMsg("TLS Handshake Successful. Connection Encrypted.");
-    }
-}
-*/
-
 void QIec104::slot_tcpdisconnect()
 {
     onDisconnectTCP();
@@ -177,12 +158,6 @@ void QIec104::terminate()
 {
     mEnding = true;
     tcps->abort();
-    // tcpThread.quit();
-    // tcpThread.wait(1000);
-    // if (tcpThread.isRunning())
-    //   tcpThread.terminate();
-    // if (tcpThread.isRunning())
-    //   tcpThread.wait(2000);
 }
 
 void QIec104::slot_tcpreadytoread()
