@@ -12,6 +12,21 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
+option(USE_STATIC_RUNTIME "Build with static runtime (/MT) instead of dynamic (/MD)" ON)
+
+if(WIN32)
+    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+    add_compile_definitions(UNICODE _UNICODE)
+	if(USE_STATIC_RUNTIME)
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        message(STATUS "Build with static runtime: ON")
+    else()
+        set(
+            "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+        message(STATUS "Build with static runtime: OFF")
+    endif()
+endif()
+
 find_package(Qt5 REQUIRED COMPONENTS
     Core
     Widgets
@@ -52,6 +67,8 @@ set(FORMS
 )
 
 set(OTHER
+    Iec104Client.rc
+    Iec104Client.ico
     cpp.hint
 )
 
@@ -65,14 +82,27 @@ add_executable(${PROJECT_NAME}
 	${OTHER}
 )
 
-if(WIN32)
-    set_target_properties(${PROJECT_NAME} PROPERTIES
-        WIN32_EXECUTABLE TRUE
-    )
-endif()
-
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
         Qt5::Widgets
         Qt5::Network
+)
+
+if(WIN32)
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        WIN32_EXECUTABLE TRUE
+        LINK_FLAGS "/SUBSYSTEM:WINDOWS"
+    )
+endif()
+
+if(MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE "/utf-8")
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        RC_OPTIONS "/l 0x0419"
+    )
+endif()
+
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    VS_PLATFORM_TOOLSET "v142"
+    VS_WINDOWS_TARGET_PLATFORM_VERSION "10.0"
 )
