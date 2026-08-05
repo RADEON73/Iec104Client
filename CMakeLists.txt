@@ -47,6 +47,8 @@ set(SOURCES
     AppSettings.cpp
 	TLogMsg.cpp
     QIec104.cpp
+    PointController.cpp
+    LogController.cpp
     iec104/iec104_class.cpp
 )
 
@@ -56,6 +58,8 @@ set(HEADERS
     AppSettings.h
     TLogMsg.h
     QIec104.h
+    PointController.h
+    LogController.h
     iec104/iec104_class.h
     iec104/iec104_types.h
     iec104/iec104.h

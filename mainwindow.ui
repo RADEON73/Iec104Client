@@ -391,80 +391,28 @@ If empty will use remote link address.</string>
             <number>0</number>
            </property>
            <item>
-            <widget class="QSpinBox" name="leCmdAddressLow">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="buttonSymbols">
-              <enum>QAbstractSpinBox::NoButtons</enum>
-             </property>
-             <property name="specialValueText">
+            <widget class="QLineEdit" name="leCmdAddressLow">
+             <property name="placeholderText">
               <string>LOW</string>
              </property>
-             <property name="maximum">
-              <number>65535</number>
-             </property>
             </widget>
            </item>
            <item>
-            <widget class="QSpinBox" name="leCmdAddressMid">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="buttonSymbols">
-              <enum>QAbstractSpinBox::NoButtons</enum>
-             </property>
-             <property name="specialValueText">
+            <widget class="QLineEdit" name="leCmdAddressMid">
+             <property name="placeholderText">
               <string>MID</string>
              </property>
-             <property name="maximum">
-              <number>65535</number>
-             </property>
             </widget>
            </item>
            <item>
-            <widget class="QSpinBox" name="leCmdAddressHigh">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="buttonSymbols">
-              <enum>QAbstractSpinBox::NoButtons</enum>
-             </property>
-             <property name="specialValueText">
+            <widget class="QLineEdit" name="leCmdAddressHigh">
+             <property name="placeholderText">
               <string>HIGH</string>
              </property>
-             <property name="maximum">
-              <number>65535</number>
-             </property>
             </widget>
            </item>
            <item>
-            <widget class="QSpinBox" name="leCmdAddress">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="buttonSymbols">
-              <enum>QAbstractSpinBox::NoButtons</enum>
-             </property>
-             <property name="specialValueText">
-              <string/>
-             </property>
-             <property name="maximum">
-              <number>65535</number>
-             </property>
-            </widget>
+            <widget class="QLineEdit" name="leCmdAddress"/>
            </item>
           </layout>
          </item>

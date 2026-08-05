@@ -24,6 +24,7 @@ private:
 	std::unique_ptr<QSettings> m_regSettings;
 
 public:
+	QString VERSION = "v1.0.0";
 
 	QString IpAddress;
 	QString IpAddressReserve;
