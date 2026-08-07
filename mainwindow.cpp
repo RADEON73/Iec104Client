@@ -1,96 +1,57 @@
 #include "MainWindow.h"
 #include "ui_MainWindow.h"
 
-#include <functional>
 #include <memory>
+#include <qabstractsocket.h>
 #include <qapplication.h>
 #include <qcolor.h>
 #include <qcombobox.h>
 #include <qcoreevent.h>
-#include <qelapsedtimer.h>
 #include <qevent.h>
-#include <qfont.h>
+#include <qframe.h>
 #include <qglobal.h>
 #include <qmainwindow.h>
 #include <qnamespace.h>
-#include <qobjectdefs.h>
 #include <qpalette.h>
 #include <qscrollbar.h>
 #include <qstring.h>
-#include <qstringlist.h>
 #include <qstylefactory.h>
-#include <qtablewidget.h>
-#include <qtimer.h>
-#include <qvector.h>
 #include <qwidget.h>
-#include <string>
 #include "AppSettings.h"
 #include "iec104/iec104_class.h"
 #include "LogController.h"
+#include "PointController.h"
+#include "ProtocolController.h"
 #include "QIec104.h"
 #include "SettingsDialog.h"
-#include "PointController.h"
 
-void MainWindow::queueProtocolCall(const std::function<void(QIec104*)>& fn)
-{
-    QMetaObject::invokeMethod(
-        i104,
-        [worker = i104, fn]() { fn(worker); },
-        Qt::QueuedConnection);
-}
-
-void MainWindow::shutdownProtocolThread()
-{
-    if (ProtocolShutdown)
-        return;
-
-    ProtocolShutdown = true;
-
-    if (!i104)
-        return;
-
-    QMetaObject::invokeMethod(i104,
-        [worker = i104]() {
-            worker->terminate();
-            worker->deleteLater();
-        },
-        Qt::BlockingQueuedConnection);
-
-    protocolThread.quit();
-    protocolThread.wait();
-
-    i104 = nullptr;
-}
-
-//-------------------------------------------------------------------------------------------------------------------------
-
-MainWindow::MainWindow(QWidget* parent)
-    : QMainWindow(parent),
-    ui(std::make_unique<Ui::MainWindow>()),
-    i104(new QIec104())
+MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
+    ui(std::make_unique<Ui::MainWindow>())
 {
     ui->setupUi(this);
 
     auto& settings = AppSettings::instance();
     settings.load();
 
-	m_logController = std::make_unique<LogController>(ui->lwLog, i104);
+    m_protocolController = std::make_unique<ProtocolController>();
+    connect(m_protocolController.get(), &ProtocolController::stateChanged,
+        this, &MainWindow::slot_stateChanged);
+    connect(m_protocolController.get(), &ProtocolController::signal_commandActRespIndication,
+        this, &MainWindow::slot_actRespIndication);
+
+    m_pointController = std::make_unique<PointController>(ui->twPontos, m_protocolController->i104());
+
+	m_logController = std::make_unique<LogController>(ui->lwLog, m_protocolController->i104());
 	connect(m_logController.get(), &LogController::logUpdated, this, [this]() {
 		if (ui->cbAutoScroll->isChecked()) {
             QScrollBar* vbar = ui->lwLog->verticalScrollBar();
             vbar->setValue(vbar->maximum());
 		}
 		});
-    connect(m_logController.get(), &LogController::resizeTableRequested, this, [this]() {
-        if (pointTableResizePending && pendingDataIndications.isEmpty()) {
-            ui->twPontos->resizeRowsToContents();
-            ui->twPontos->resizeColumnsToContents();
-            pointTableResizePending = false;
-        }
-        });
+	connect(m_logController.get(), &LogController::resizeTableRequested, 
+        m_pointController.get(), &PointController::slot_resizeTable);
     m_logController->setLogState(ui->cbLog->isChecked());
 
-    m_pointController = std::make_unique<PointController>(ui->twPontos, i104);
 
     auto separator = []() {
         auto f = new QFrame;
@@ -98,129 +59,38 @@ MainWindow::MainWindow(QWidget* parent)
         f->setFrameShadow(QFrame::Sunken);
         return f;
         };
-    statusBar()->addWidget(&m_lbStatus, 1);          // занимает все свободное место
-    statusBar()->addPermanentWidget(&m_lbMode);
+    statusBar()->addWidget(&m_lbStatus, 1);
     statusBar()->addPermanentWidget(separator());
     statusBar()->addPermanentWidget(new QLabel(settings.VERSION));
 
     on_cb888Mode_stateChanged(ui->cb888Mode->isChecked());
 
-    i104->moveToThread(&protocolThread);
-    protocolThread.start();
+    m_protocolController->reloadProtocolSettings();
 
-    tmUiDataPump = new QTimer(this);
-    connect(tmUiDataPump, &QTimer::timeout, this, &MainWindow::slot_processPendingUiData);
-
-    connect(i104, &QIec104::signal_dataIndication, this, &MainWindow::slot_dataIndication);
-    connect(i104, &QIec104::signal_tcp_connect, this, &MainWindow::slot_tcpconnect);
-    connect(i104, &QIec104::signal_tcp_disconnect, this, &MainWindow::slot_tcpdisconnect);
-    connect(i104, &QIec104::signal_commandActRespIndication, this, [this](const iec_obj& obj) {
-        CommandData data{};
-        data.cb888Mode = ui->cb888Mode->isChecked();
-        data.leCmdAddressLow = ui->leCmdAddressLow->text();
-        data.leCmdAddressMid = ui->leCmdAddressMid->text();
-        data.leCmdAddressHigh = ui->leCmdAddressHigh->text();
-        data.leCmdAddress = ui->leCmdAddress->text();
-        data.leASDUAddr = ui->leASDUAddr->text();
-        data.cbCmdAsdu = ui->cbCmdAsdu->currentText();
-        data.cbCmdDuration = ui->cbCmdDuration->currentText();
-        data.leCmdValue = ui->leCmdValue->text();
-        data.cbSBO = ui->cbSBO->isChecked();
-        m_pointController->commandActRespIndication1(data, obj);
-        }
-    );
-        
-    reloadProtocolSettings();
-
-    ui->pbGI->setEnabled(false);
-    ui->pbCopyVals->setEnabled(false);
-	ui->sendCommand->setEnabled(false);
-
-    ui->twPontos->sortByColumn(0, Qt::AscendingOrder);
-    ui->twPontos->setColumnCount(8);
-    QStringList colunas;
-    colunas << "Адрес"
-        << "АСДУ"
-        << "Значение"
-        << "Тип"
-        << "Причина"
-        << "Флаги"
-        << "Счетчик"
-        << "Временная метка";
-    ui->twPontos->setHorizontalHeaderLabels(colunas);
-
-    QFont font = QFont("Consolas");
-    font.setStyleHint(QFont::Monospace);
-    font.setPointSize(8);
-    font.setFixedPitch(true);
-    ui->lwLog->setFont(font);
-
-    // Set default theme to Light
     ui->cbTheme->setCurrentIndex(0);
     on_cbTheme_currentIndexChanged(0);
-    connect(ui->cbTheme, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::on_cbTheme_currentIndexChanged);
+    connect(ui->cbTheme, QOverload<int>::of(&QComboBox::currentIndexChanged), 
+        this, &MainWindow::on_cbTheme_currentIndexChanged);
 }
 
-MainWindow::~MainWindow()
-{
-    AppSettings::instance().store();
-    shutdownProtocolThread();
-}
+MainWindow::~MainWindow() = default;
 
 void MainWindow::on_pbGI_clicked()
 {
-    queueProtocolCall([](QIec104* worker) { 
-        worker->solicitGI(); 
-        });
+    m_protocolController->request_GI();
 }
 
 void MainWindow::on_pbConnect_clicked()
 {
-    if (ProtocolKeepAliveActive) {
-        ProtocolKeepAliveActive = false;
-        queueProtocolCall([](QIec104* worker) {
-            worker->tmKeepAlive->stop();
-            worker->tcps->close();
-            worker->slot_tcpdisconnect();
-            });
-    }
-    else {
-        reloadProtocolSettings();
-		ui->pbSettingsDialog->setEnabled(false);
-        ui->pbConnect->setText("Прервать");
-        m_lbStatus.setText("<font color='green'>Попытка подключения...</font>");
-        m_pointController->clear();
-        ProtocolKeepAliveActive = true;
-        queueProtocolCall([](QIec104* worker) { 
-            worker->tmKeepAlive->start(1000); 
-            });
-    }
-}
-
-void MainWindow::reloadProtocolSettings()
-{
-    auto& s = AppSettings::instance();
-
-    queueProtocolCall([&s](QIec104* worker) {
-        worker->setSecondaryIP(const_cast<char*>(s.IpAddress.toStdString().c_str()));
-        worker->setSecondaryIP_backup(const_cast<char*>(s.IpAddressReserve.toStdString().c_str()));
-        worker->setPortTCP(s.TcpPort);
-
-        worker->setSecondaryAddress(s.CA);
-        worker->setPrimaryAddress(s.OA);
-
-        worker->setGIPeriod(s.GIperiod);
-
-        worker->ForcePrimary = s.ForcePrimary;
-        worker->SendCommands = s.SendCommands;
-        });
+    m_protocolController->request_Connect();
 }
 
 void MainWindow::on_pbSettingsDialog_clicked()
 {
 	auto dlg = new SettingsDialog(this);
     dlg->setAttribute(Qt::WA_DeleteOnClose);
-    connect(dlg, &SettingsDialog::settingsChanged, this, &MainWindow::reloadProtocolSettings);
+    connect(dlg, &SettingsDialog::settingsChanged, 
+        m_protocolController.get(), &ProtocolController::reloadProtocolSettings);
     dlg->show();
 }
 
@@ -232,101 +102,79 @@ void MainWindow::on_pbSendCommandsButton_clicked()
     data.leCmdAddressMid = ui->leCmdAddressMid->text();
 	data.leCmdAddressHigh = ui->leCmdAddressHigh->text();
 	data.leCmdAddress = ui->leCmdAddress->text();
-	data.leASDUAddr = ui->leASDUAddr->text().toInt();
+	data.leASDUAddr = ui->leASDUAddr->text();
 	data.cbCmdAsdu = ui->cbCmdAsdu->currentText();
 	data.cbCmdDuration = ui->cbCmdDuration->currentText();
-	data.leCmdValue = ui->leCmdValue->text().toInt();
+	data.leCmdValue = ui->leCmdValue->text();
 	data.cbSBO = ui->cbSBO->isChecked();
 	m_pointController->sendCommand(data);
 }
 
-void MainWindow::slot_dataIndication(const QVector<iec_obj>& objects)
+void MainWindow::slot_actRespIndication(const iec_obj& obj)
 {
-    if (objects.isEmpty()) {
-        return;
-    }
-
-    pendingDataPointCount += objects.size();
-    pendingDataIndications.enqueue(objects);
-
-    if (!tmUiDataPump->isActive())
-        tmUiDataPump->start(0);
+    CommandData data{};
+    data.cb888Mode = ui->cb888Mode->isChecked();
+    data.leCmdAddressLow = ui->leCmdAddressLow->text();
+    data.leCmdAddressMid = ui->leCmdAddressMid->text();
+    data.leCmdAddressHigh = ui->leCmdAddressHigh->text();
+    data.leCmdAddress = ui->leCmdAddress->text();
+    data.leASDUAddr = ui->leASDUAddr->text();
+    data.cbCmdAsdu = ui->cbCmdAsdu->currentText();
+    data.cbCmdDuration = ui->cbCmdDuration->currentText();
+    data.leCmdValue = ui->leCmdValue->text();
+    data.cbSBO = ui->cbSBO->isChecked();
+    m_pointController->commandActRespIndication1(data, obj);
 }
 
-void MainWindow::slot_processPendingUiData()
+void MainWindow::slot_stateChanged(QAbstractSocket::SocketState state)
 {
-    if (pendingDataIndications.isEmpty()) {
-        tmUiDataPump->stop();
-        return;
-    }
-
-    const qsizetype maxPointsPerTick =
-        pendingDataPointCount > 20000 ? 12000 : 4000;
-    const qint64 maxMillisPerTick =
-        pendingDataPointCount > 20000 ? 30 : 20;
-
-    qsizetype pointsProcessed = 0;
-    QElapsedTimer elapsed;
-    elapsed.start();
-
-    ui->twPontos->setUpdatesEnabled(false);
-    while (!pendingDataIndications.isEmpty()) {
-        const QVector<iec_obj> objects = pendingDataIndications.dequeue();
-        pendingDataPointCount -= objects.size();
-        if (m_pointController->processDataIndicationBatch(objects)) {
-            pointTableSortPending = true;
-            pointTableResizePending = true;
-        }
-
-        pointsProcessed += objects.size();
-
-        if (pointsProcessed >= maxPointsPerTick || elapsed.elapsed() >= maxMillisPerTick) {
-            break;
-        }
-    }        
-    ui->twPontos->setUpdatesEnabled(true);
-    ui->twPontos->viewport()->update();
-
-    if (pointTableSortPending && pendingDataIndications.isEmpty()) {
-        ui->twPontos->sortItems(0);
-        pointTableSortPending = false;
-    }
-
-    if (pendingDataIndications.isEmpty())
-        tmUiDataPump->stop();
-    else
-        tmUiDataPump->start(0);
-}
-
-void MainWindow::slot_tcpconnect(const QString& peerAddress)
-{
-    m_lbStatus.setText("<font color='green'>" + QString("Соединение установлено c ") + peerAddress + "</font>" );
-    ui->pbGI->setEnabled(true);
-    ui->pbCopyVals->setEnabled(true);
-    ui->sendCommand->setEnabled(true);
-    ui->pbConnect->setText("Отключить");
-}
-
-void MainWindow::slot_tcpdisconnect()
-{
-    m_lbStatus.setText("<font color='red'> Соединение отключено!</font>");
-    ui->pbGI->setEnabled(false);
-    ui->pbCopyVals->setEnabled(false);
-    ui->sendCommand->setEnabled(false);
-
-    if (ProtocolKeepAliveActive) {
-        ui->pbConnect->setText("Прервать");
-		ui->pbSettingsDialog->setEnabled(false);
-    }
-    else {
+	switch (state) {
+    case QAbstractSocket::ConnectedState:
+        m_pointController->clear();
+        m_lbStatus.setText("<font color='green'> Соединение установлено </font>");
+        ui->pbGI->setEnabled(true);
+        ui->sendCommand->setEnabled(true);
+        ui->pbConnect->setText("Отключить");
+        ui->pbSettingsDialog->setEnabled(false);
+        break;
+	case QAbstractSocket::UnconnectedState:
+        m_lbStatus.setText("<font color='red'> Сокет не подключен </font>");
+        ui->pbGI->setEnabled(false);
+        ui->sendCommand->setEnabled(false);
         ui->pbConnect->setText("Подключить");
         ui->pbSettingsDialog->setEnabled(true);
-    }
+		break;
+	case QAbstractSocket::HostLookupState:
+        m_lbStatus.setText("<font color='blue'> Выполняется DNS-разрешение имени </font>");
+        break;
+	case QAbstractSocket::ConnectingState:
+        m_lbStatus.setText("<font color='blue'> Идет установка TCP-соединения... </font>");
+        ui->pbGI->setEnabled(false);
+        ui->sendCommand->setEnabled(false);
+        ui->pbConnect->setText("Прервать");
+        ui->pbSettingsDialog->setEnabled(false);
+        break;
+    case QAbstractSocket::BoundState:
+        m_lbStatus.setText("<font color='blue'> Состояние BoundState </font>");
+		break;
+    case QAbstractSocket::ListeningState:
+        m_lbStatus.setText("<font color='blue'> Соединение ListeningState </font>");
+		break;
+	case QAbstractSocket::ClosingState:
+        m_lbStatus.setText("<font color='blue'> Выполняется отключение... </font>");
+        ui->pbGI->setEnabled(false);
+        ui->sendCommand->setEnabled(false);
+        ui->pbConnect->setText("Закрытие сокета");
+        ui->pbSettingsDialog->setEnabled(false);
+		break;
+	default:
+        m_lbStatus.setText("<font color='blue'> Соединение UNKNOWN </font>");
+		break;
+	}
 }
 
 void MainWindow::closeEvent(QCloseEvent* event)
 {
-    shutdownProtocolThread();
     event->accept();
 }
 

@@ -4,6 +4,7 @@
 #include <qapplication.h>
 #include <qclipboard.h>
 #include <qdatetime.h>
+#include <qfont.h>
 #include <qobject.h>
 #include <qplaintextedit.h>
 #include <qstring.h>
@@ -14,9 +15,14 @@ LogController::LogController(QPlainTextEdit* log, QIec104* i104, QObject* parent
 	m_log(log), 
     m_i104(i104)
 {
-	tmLogMsg = new QTimer(this);
-	connect(tmLogMsg, &QTimer::timeout, this, &LogController::slot_timer_logmsg);
-	tmLogMsg->start(350);
+	connect(&tmLogMsg, &QTimer::timeout, this, &LogController::slot_timer_logmsg);
+	tmLogMsg.start(350);
+
+    QFont font = QFont("Consolas");
+    font.setStyleHint(QFont::Monospace);
+    font.setPointSize(8);
+    font.setFixedPitch(true);
+    m_log->setFont(font);
 }
 
 LogController::~LogController() = default;

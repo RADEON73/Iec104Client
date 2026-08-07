@@ -14,29 +14,34 @@
 #include <qvector.h>
 #include <string>
 #include "iec104/iec104_class.h"
+#include <qthread.h>
 
-QIec104::QIec104(QObject* parent) : QObject(parent)
+QIec104::QIec104(QObject* parent) 
+    : QObject(parent),
+    m_tmKeepAlive(new QTimer(this)),
+    m_tcps(new QTcpSocket(this))
 {
     mLog.activateLog();
     mLog.doLogTime();
 
-    tcps = new QTcpSocket(this);
-    tmKeepAlive = new QTimer(this);
+    connect(m_tcps, &QTcpSocket::stateChanged, this, [this](QAbstractSocket::SocketState state) { 
+        emit stateChanged(state);
+        });
 
-    connect(tmKeepAlive, &QTimer::timeout, this, &QIec104::slot_keep_alive);
-    connect(tcps, &QTcpSocket::readyRead, this, &QIec104::slot_tcpreadytoread);
-    connect(tcps, &QTcpSocket::connected, this, &QIec104::slot_tcpconnect);
-    connect(tcps, &QTcpSocket::disconnected, this, &QIec104::slot_tcpdisconnect);
-    connect(tcps, &QTcpSocket::errorOccurred, this, &QIec104::slot_tcperror, Qt::DirectConnection);
-    connect(tcps, &QTcpSocket::errorOccurred, this, &QIec104::slot_socketError);
+    connect(m_tmKeepAlive, &QTimer::timeout, this, &QIec104::slot_keep_alive);
+    connect(m_tcps, &QTcpSocket::readyRead, this, &QIec104::slot_tcpReadyRead);
+    connect(m_tcps, &QTcpSocket::connected, this, &QIec104::slot_tcpconnect);
+    connect(m_tcps, &QTcpSocket::disconnected, this, &QIec104::slot_tcpdisconnect);
+    connect(m_tcps, &QTcpSocket::errorOccurred, this, &QIec104::slot_tcperror, Qt::DirectConnection);
+    connect(m_tcps, &QTcpSocket::errorOccurred, this, &QIec104::slot_socketError);
 }
 
 QIec104::~QIec104() = default;
 
 void QIec104::waitBytes(int bytes, int msTout)
 {
-    while (tcps->bytesAvailable() < bytes && msTout > 0) {
-        tcps->waitForReadyRead(8);
+    while (m_tcps->bytesAvailable() < bytes && msTout > 0) {
+        m_tcps->waitForReadyRead(8);
         msTout -= 8;
     }
 }
@@ -53,39 +58,67 @@ void QIec104::dataIndication(iec_obj* obj, unsigned numpoints)
 
 void QIec104::connectTCP()
 {
+    if (m_tcps->state() != QAbstractSocket::UnconnectedState) {
+        mLog.pushMsg("TCP соединение не отключено.");
+        return;
+    }
+
     char buf[100];
 
-    tcps->abort();
+    m_tcps->abort();
 
-    if (!mEnding && mAllowConnect) {
+    if (!mEnding) {
+        mConnectAttemptCounter++;
         // alternate main and backup UTR IP address, if configured
-        if ((++mConnectAttemptCounter) % 2 || strcmp(getSecondaryIP_backup(), "0.0.0.0") == 0) {
-            tcps->connectToHost(getSecondaryIP(), quint16(getPortTCP()), QIODevice::ReadWrite);
-            sprintf(buf, "Try to connect IP: %s", getSecondaryIP());
+        if (mConnectAttemptCounter % 2 || strcmp(getSecondaryIP_backup(), "0.0.0.0") == 0) {
+            m_tcps->connectToHost(getSecondaryIP(), quint16(getPortTCP()), QIODevice::ReadWrite);
+            sprintf(buf, "Попытка подключения к IP: %s", getSecondaryIP());
             mLog.pushMsg(const_cast<char*>(buf));
         }
         else {
-            tcps->connectToHost(getSecondaryIP_backup(), quint16(getPortTCP()), QIODevice::ReadWrite);
-            sprintf(buf, "Try to connect IP: %s", getSecondaryIP_backup());
+            m_tcps->connectToHost(getSecondaryIP_backup(), quint16(getPortTCP()), QIODevice::ReadWrite);
+            sprintf(buf, "Попытка подключения к IP: %s", getSecondaryIP_backup());
             mLog.pushMsg(const_cast<char*>(buf));
         }
     }
+
+    m_tmKeepAlive->start(1000);
+
+    m_tcps->setSocketOption(QAbstractSocket::LowDelayOption, 1);
+    onConnectTCP();
+
 }
 
-void QIec104::disconnectTCP() { tcps->abort(); }
+void QIec104::disconnectTCP() 
+{ 
+    if (m_tcps->state() != QAbstractSocket::ConnectedState) {
+		mLog.pushMsg("TCP соединение уже разорвано.");
+        return;
+    }
+
+    m_tmKeepAlive->stop();
+    m_tcps->close();
+
+    onDisconnectTCP();
+}
+
+QAbstractSocket::SocketState QIec104::connectionState() const
+{
+    return m_tcps->state();
+}
 
 void QIec104::slot_tcperror(QAbstractSocket::SocketError socketError)
 {
     if (socketError != QAbstractSocket::SocketTimeoutError) {
         char buf[100];
-        sprintf(buf, "SocketError: %d", socketError);
+        sprintf(buf, "Ошибка сокета: %d", socketError);
         mLog.pushMsg(const_cast<char*>(buf));
     }
 }
 
 int QIec104::readTCP(char* buf, int szmax)
 {
-    int ret = int(tcps->read(buf, szmax));
+    int ret = int(m_tcps->read(buf, szmax));
 
     if (!mEnding && ret > 0)
         return ret;
@@ -96,10 +129,10 @@ int QIec104::readTCP(char* buf, int szmax)
 // send tcp data, user provided
 void QIec104::sendTCP(char* data, int sz)
 {
-    if (tcps->state() == QAbstractSocket::ConnectedState)
+    if (m_tcps->state() == QAbstractSocket::ConnectedState)
         if (!mEnding) {
-            tcps->write(data, sz);
-            tcps->flush();
+            m_tcps->write(data, sz);
+            m_tcps->flush();
             if (mLog.isLogging())
                 LogFrame(data, sz, true);
         }
@@ -107,41 +140,26 @@ void QIec104::sendTCP(char* data, int sz)
 
 void QIec104::slot_tcpconnect()
 {
-    tcps->setSocketOption(QAbstractSocket::LowDelayOption, 1);
-    mLog.pushMsg("Plain TCP Connection Established.");
-    onConnectTCP();
-    emit signal_tcp_connect(tcps->peerAddress().toString());
+    mLog.pushMsg("TCP соединение установлено.");
 }
 
 void QIec104::slot_tcpdisconnect()
 {
     onDisconnectTCP();
-    emit signal_tcp_disconnect();
 }
 
 void QIec104::slot_keep_alive()
 {
     if (!mEnding) {
         mKeepAliveCounter++;
-
         if (!(mKeepAliveCounter % 5))
-            if (tcps->state() != QAbstractSocket::ConnectedState && mAllowConnect) {
-                mLog.pushMsg("!!!!!TRY TO CONNECT!");
+            if (m_tcps->state() == QAbstractSocket::UnconnectedState) {
+                mLog.pushMsg("!!!!!ПОПЫТКА ПОДКЛЮЧЕНИЯ...!");
                 connectTCP();
             }
 
         onTimerSecond();
     }
-}
-
-void QIec104::interrogationActConfIndication()
-{
-    emit signal_interrogationActConfIndication();
-}
-
-void QIec104::interrogationActTermIndication()
-{
-    emit signal_interrogationActTermIndication();
 }
 
 void QIec104::commandActRespIndication(iec_obj* obj)
@@ -152,35 +170,23 @@ void QIec104::commandActRespIndication(iec_obj* obj)
 void QIec104::terminate()
 {
     mEnding = true;
-    tcps->abort();
+    m_tcps->abort();
 }
 
-void QIec104::slot_tcpreadytoread()
+void QIec104::slot_tcpReadyRead()
 {
-    if (tcps->bytesAvailable() < 6)
-        tcps->waitForReadyRead(8);
+    if (m_tcps->bytesAvailable() < 6)
+        m_tcps->waitForReadyRead(8);
 
     packetReadyTCP();
 }
 
-void QIec104::disable_connect()
-{
-    mAllowConnect = false;
-    if (tcps->state() == QAbstractSocket::ConnectedState)
-        disconnectTCP();
-}
-
-void QIec104::enable_connect() 
-{
-    mAllowConnect = true;
-}
-
 int QIec104::bytesAvailableTCP() 
 { 
-    return int(tcps->bytesAvailable()); 
+    return int(m_tcps->bytesAvailable());
 }
 
 void QIec104::slot_socketError(QAbstractSocket::SocketError)
 {
-    mLog.pushMsg(tcps->errorString().toStdString().c_str());
+    mLog.pushMsg(m_tcps->errorString().toStdString().c_str());
 }

@@ -1,6 +1,8 @@
+//Класс диалог параметров подключения
 #pragma once
 #include <memory>
 #include <qdialog.h>
+#include <qglobal.h>
 #include <qwidget.h>
 
 QT_BEGIN_NAMESPACE

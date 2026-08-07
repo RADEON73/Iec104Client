@@ -1,4 +1,6 @@
+//Класс отвечает за организацию таблицы со списками точек (МЭК-104 тегов)
 #pragma once
+#include <functional>
 #include <map>
 #include <QIec104.h>
 #include <qobject.h>
@@ -8,7 +10,9 @@
 #include <qvector.h>
 #include <utility>
 #include "iec104/iec104_class.h"
-#include <functional>
+#include <qtimer.h>
+#include <qglobal.h>
+#include <qqueue.h>
 
 struct CommandData
 {
@@ -29,7 +33,7 @@ class PointController  : public QObject
 	Q_OBJECT
 
 public:
-	PointController(QTableWidget* table, QIec104* i104, QObject *parent = nullptr);
+    explicit PointController(QTableWidget* table, QIec104* i104, QObject *parent = nullptr);
 	~PointController();
 
     void copyToClipboard();
@@ -41,6 +45,14 @@ public:
 
     void set888Mode(bool arg);
 
+public slots:
+    void slot_dataIndication(const QVector<iec_obj>& objects);
+	void slot_resizeTable();
+
+private slots:
+    void slot_processPendingUiData();
+
+
 private:
     void fmtCP56Time(char*, const cp56time2a*);
 
@@ -50,9 +62,6 @@ private:
 	QTableWidget* m_table;
 	QIec104* m_i104;
 
-    bool Mode888 = false;
-    unsigned LastCommandAddress = 0;
-
     std::map <std::pair<int, int>, QTableWidgetItem*> mapPtItem_ColAddress; // map of points to cells of table
     std::map <std::pair<int, int>, QTableWidgetItem*> mapPtItem_ColCommonAddress;
     std::map <std::pair<int, int>, QTableWidgetItem*> mapPtItem_ColValue;
@@ -61,5 +70,13 @@ private:
     std::map <std::pair<int, int>, QTableWidgetItem*> mapPtItem_ColFlags;
     std::map <std::pair<int, int>, QTableWidgetItem*> mapPtItem_ColCount;
     std::map <std::pair<int, int>, QTableWidgetItem*> mapPtItem_ColTimeTag;
+
+    bool m_mode888 = false;
+    unsigned m_lastCommandAddress = 0;
+    qsizetype m_pendingDataPointCount = 0;
+    QQueue<QVector<iec_obj>> m_pendingDataIndications;
+    bool m_pointTableSortPending = false;
+    bool m_pointTableResizePending = false;
+    QTimer tmUiDataPump; // timer to batch UI point updates
 };
 

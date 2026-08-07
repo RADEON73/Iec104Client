@@ -5,7 +5,7 @@
 #include <qvector.h>
 #include <string>
 #include "iec104_types.h"
-#include "TLogMsg.h"
+#include "tLogMsg.h"
 
 #pragma pack(push)
 #pragma pack(1) // byte aligned structures

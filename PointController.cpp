@@ -10,6 +10,9 @@
 #include "iec104/iec104_class.h"
 #include "iec104/iec104_types.h"
 #include "QIec104.h"
+#include <qelapsedtimer.h>
+#include <qobjectdefs.h>
+#include <qglobal.h>
 
 static unsigned int parseIoa(const QString& str)
 {
@@ -29,6 +32,21 @@ PointController::PointController(QTableWidget* table, QIec104* i104, QObject *pa
 	m_table(table),
 	m_i104(i104)
 {
+    connect(&tmUiDataPump, &QTimer::timeout, this, &PointController::slot_processPendingUiData);
+    connect(m_i104, &QIec104::signal_dataIndication, this, &PointController::slot_dataIndication);
+
+    m_table->sortByColumn(0, Qt::AscendingOrder);
+    m_table->setColumnCount(8);
+    QStringList colunas;
+    colunas << "Адрес"
+        << "АСДУ"
+        << "Значение"
+        << "Тип"
+        << "Причина"
+        << "Флаги"
+        << "Счетчик"
+        << "Временная метка";
+    m_table->setHorizontalHeaderLabels(colunas);
 }
 
 PointController::~PointController() = default;
@@ -77,7 +95,7 @@ bool PointController::processDataIndicationBatch(const QVector<iec_obj>& objects
         pitem = mapPtItem_ColAddress[std::make_pair(obj->ca, obj->address)];
         if (pitem == nullptr) {
 
-            if (Mode888)
+            if (m_mode888)
                 sprintf(buf, "%u-%u-%u", obj->address & 0xFF, (obj->address >> 8) & 0xFF, (obj->address >> 16) & 0xFF);
             else
                 sprintf(buf, "%u", obj->address);
@@ -457,7 +475,7 @@ void PointController::commandActRespIndication1(CommandData data, const iec_obj&
     if (obj.cause == iec104_class::REQUEST ||
         obj.cause == iec104_class::ACTIVATION ||
         obj.cause == iec104_class::ACTCONFIRM)
-        if (LastCommandAddress == obj.address) {
+        if (m_lastCommandAddress == obj.address) {
             m_i104->mLog.pushMsg("     COMMAND CONF INDICATION");
             is_select = (obj.se == iec104_class::SELECT);
 
@@ -535,6 +553,7 @@ void PointController::sendCommand(CommandData data)
             }
 
     obj.ca = data.leASDUAddr.toUShort();
+
     queueProtocolCall([ca = obj.ca](QIec104* worker) {
         worker->setSecondaryASDUAddress(ca);
         });
@@ -644,7 +663,7 @@ void PointController::sendCommand(CommandData data)
 
     queueProtocolCommand(obj);
 
-    LastCommandAddress = obj.address;
+    m_lastCommandAddress = obj.address;
 }
 
 void PointController::fmtCP56Time(char* buf, const cp56time2a* timetag)
@@ -672,4 +691,65 @@ void PointController::queueProtocolCall(const std::function<void(QIec104*)>& fn)
         m_i104,
         [worker = m_i104, fn]() { fn(worker); },
         Qt::QueuedConnection);
+}
+
+void PointController::slot_processPendingUiData()
+{
+    if (m_pendingDataIndications.isEmpty()) {
+        tmUiDataPump.stop();
+        return;
+    }
+
+    const qsizetype maxPointsPerTick = m_pendingDataPointCount > 20000 ? 12000 : 4000;
+    const qint64 maxMillisPerTick = m_pendingDataPointCount > 20000 ? 30 : 20;
+
+    qsizetype pointsProcessed = 0;
+    QElapsedTimer elapsed;
+    elapsed.start();
+
+    m_table->setUpdatesEnabled(false);
+    while (!m_pendingDataIndications.isEmpty()) {
+        const QVector<iec_obj> objects = m_pendingDataIndications.dequeue();
+        m_pendingDataPointCount -= objects.size();
+        if (processDataIndicationBatch(objects)) {
+            m_pointTableSortPending = true;
+            m_pointTableResizePending = true;
+        }
+        pointsProcessed += objects.size();
+        if (pointsProcessed >= maxPointsPerTick || elapsed.elapsed() >= maxMillisPerTick)
+            break;
+    }
+    m_table->setUpdatesEnabled(true);
+    m_table->viewport()->update();
+
+    if (m_pointTableSortPending && m_pendingDataIndications.isEmpty()) {
+        m_table->sortItems(0);
+        m_pointTableSortPending = false;
+    }
+
+    if (m_pendingDataIndications.isEmpty())
+        tmUiDataPump.stop();
+    else
+        tmUiDataPump.start(0);
+}
+
+void PointController::slot_dataIndication(const QVector<iec_obj>& objects)
+{
+    if (objects.isEmpty())
+        return;
+
+    m_pendingDataPointCount += objects.size();
+    m_pendingDataIndications.enqueue(objects);
+
+    if (!tmUiDataPump.isActive())
+        tmUiDataPump.start(0);
+}
+
+void PointController::slot_resizeTable()
+{
+    if (m_pointTableResizePending && m_pendingDataIndications.isEmpty()) {
+        m_table->resizeRowsToContents();
+        m_table->resizeColumnsToContents();
+        m_pointTableResizePending = false;
+    }
 }

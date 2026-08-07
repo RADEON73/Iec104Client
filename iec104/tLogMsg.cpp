@@ -1,4 +1,4 @@
-#include "TLogMsg.h"
+#include "tLogMsg.h"
 
 #include <ctime>
 #include <qmutex.h>

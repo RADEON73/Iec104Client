@@ -89,7 +89,7 @@
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
-       <widget class="QGroupBox" name="groupBox">
+       <widget class="QGroupBox" name="signalsList">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
           <horstretch>0</horstretch>
@@ -117,6 +117,9 @@
          </property>
          <item row="0" column="0">
           <widget class="QPushButton" name="pbGI">
+           <property name="enabled">
+            <bool>false</bool>
+           </property>
            <property name="text">
             <string>Инициировать общий опрос</string>
            </property>
@@ -157,6 +160,9 @@
         </layout>
        </widget>
        <widget class="QGroupBox" name="sendCommand">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
         <property name="sizePolicy">
          <sizepolicy hsizetype="Maximum" vsizetype="Preferred">
           <horstretch>0</horstretch>

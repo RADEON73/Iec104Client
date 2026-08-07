@@ -27,9 +27,6 @@ void AppSettings::load()
 
     GIperiod = m_regSettings->value("GI_PERIOD", 330).toInt();
 
-    ForcePrimary = m_regSettings->value("FORCE_PRIMARY", 0).toInt();
-    SendCommands = m_regSettings->value("ALLOW_COMMANDS", 0).toInt();
-
     m_regSettings->endGroup();
 }
 
@@ -45,9 +42,6 @@ void AppSettings::store()
     m_regSettings->setValue("OA", OA);
 
     m_regSettings->setValue("GI_PERIOD", GIperiod);
-
-    m_regSettings->setValue("FORCE_PRIMARY", ForcePrimary);
-    m_regSettings->setValue("ALLOW_COMMANDS", SendCommands);
 
     m_regSettings->endGroup();
 }

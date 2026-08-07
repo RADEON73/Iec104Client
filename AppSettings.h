@@ -34,8 +34,5 @@ public:
 	int OA; //Адрес отправителя (OA) - Originator Address
 
 	int GIperiod; //GI period in seconds, 0 = no GI
-
-	int ForcePrimary; // 1 = force primary (cant't stay secondary) , 0 = can be secondary
-	int SendCommands; // 1 = allow sending commands, 0 = don't send commands
 };
 

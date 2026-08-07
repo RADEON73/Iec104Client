@@ -45,24 +45,26 @@ set(SOURCES
     MainWindow.cpp
     SettingsDialog.cpp
     AppSettings.cpp
-	TLogMsg.cpp
     QIec104.cpp
     PointController.cpp
     LogController.cpp
+    ProtocolController.cpp
     iec104/iec104_class.cpp
+    iec104/tLogMsg.cpp
 )
 
 set(HEADERS
     MainWindow.h
     SettingsDialog.h
     AppSettings.h
-    TLogMsg.h
     QIec104.h
     PointController.h
     LogController.h
+    ProtocolController.h
     iec104/iec104_class.h
     iec104/iec104_types.h
     iec104/iec104.h
+    iec104/tLogMsg.h
 )
 
 set(FORMS
