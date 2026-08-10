@@ -18,13 +18,14 @@ ProtocolController::ProtocolController(QObject *parent)
     connect(m_i104, &QIec104::stateChanged, this, &ProtocolController::stateChanged);
     connect(m_i104, &QIec104::signal_commandActRespIndication, this, &ProtocolController::signal_commandActRespIndication);
 
-    m_i104->moveToThread(&protocolThread);
-    protocolThread.start();
+    m_i104->moveToThread(&m_protocolThread);
+    connect(m_i104, &QObject::destroyed, &m_protocolThread, &QThread::quit, Qt::DirectConnection);
+    m_protocolThread.start();
 }
 
 ProtocolController::~ProtocolController()
 {
-    shutdownProtocolThread();
+    shutdown();
 }
 
 QIec104* ProtocolController::i104()
@@ -44,19 +45,35 @@ void ProtocolController::request_Connect()
     reloadProtocolSettings();
 
     queueProtocolCall([](QIec104* worker) {
-        do {
-            switch (worker->connectionState()) {
-            case QAbstractSocket::ConnectedState:
-                worker->disconnectTCP();
-                return;
-            case QAbstractSocket::UnconnectedState:
-                worker->connectTCP();
-                return;
-            default:
-                break;
-            }
-        } while (true);
+        switch (worker->connectionState()) {
+        case QAbstractSocket::UnconnectedState:
+            worker->connectTcp();
+            return;
+        default:
+            worker->disconnectTcp();
+            break;
+        }
         });
+}
+
+void ProtocolController::shutdown()
+{
+    if (!m_protocolThread.isRunning())
+        return;
+
+    QMetaObject::invokeMethod(
+        m_i104,
+        [worker = m_i104]() {
+            worker->terminate();
+            worker->deleteLater();
+        },
+        Qt::BlockingQueuedConnection
+    );
+
+    m_protocolThread.wait();
+
+    m_i104 = nullptr;
+
 }
 
 void ProtocolController::queueProtocolCall(const std::function<void(QIec104*)>& fn)
@@ -81,27 +98,4 @@ void ProtocolController::reloadProtocolSettings()
 
         worker->setGIPeriod(s.GIperiod);
         });
-}
-
-void ProtocolController::shutdownProtocolThread()
-{
-    if (ProtocolShutdown)
-        return;
-
-    ProtocolShutdown = true;
-
-    if (!m_i104)
-        return;
-
-    QMetaObject::invokeMethod(m_i104,
-        [worker = m_i104]() {
-            worker->terminate();
-            worker->deleteLater();
-        },
-        Qt::BlockingQueuedConnection);
-
-    protocolThread.quit();
-    protocolThread.wait();
-
-    m_i104 = nullptr;
 }

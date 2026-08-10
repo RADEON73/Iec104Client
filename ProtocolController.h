@@ -21,6 +21,8 @@ public:
 	void request_GI();
 	void request_Connect();
 
+    void shutdown();
+
 signals:
     void stateChanged(QAbstractSocket::SocketState);
     void signal_commandActRespIndication(const iec_obj& obj);
@@ -30,13 +32,9 @@ public slots:
 
 private:
     void queueProtocolCall(const std::function<void(QIec104*)>& fn);
-    void shutdownProtocolThread();
 
 private:
     QIec104* m_i104 = nullptr;
-    QThread protocolThread;
-
-
-    bool ProtocolShutdown = false;
+    QThread m_protocolThread;
 };
 

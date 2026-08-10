@@ -268,7 +268,7 @@ void iec104_class::onDisconnectTCP()
     broken_msg = false;
     rxBytes = 0;
     TxOk = false;
-    mLog.pushMsg("*** TCP СОЕДИНЕНИЕ ОТКЛЮЧЕНО!");
+    mLog.pushMsg("*** TCP DISCONNECT!");
 }
 
 void iec104_class::onTimerSecond()
