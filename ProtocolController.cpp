@@ -7,7 +7,7 @@
 #include <qnamespace.h>
 #include <qobject.h>
 #include <qobjectdefs.h>
-#include "qiec104.h"
+#include "QIec104.h"
 
 ProtocolController::ProtocolController(QObject *parent) 
     : QObject(parent),
