@@ -81,6 +81,23 @@ QVariant TableModel::data(const QModelIndex& index, int role) const
     case Qt::DisplayRole:
     case Qt::EditRole:
         return cell.data();
+
+    case QtSortRole:
+        switch (index.column()) {
+        case PointColumn::Address:
+            return rows_[index.row()].address();
+        case PointColumn::CA:
+            return rows_[index.row()].ca();
+        case PointColumn::Value:
+            return cell.data().toDouble();
+        case PointColumn::Type:
+        case PointColumn::Cause:
+        case PointColumn::Count:
+            return cell.data().toInt();
+        default:
+            return cell.data();
+        }
+
     default:
         return {};
     }

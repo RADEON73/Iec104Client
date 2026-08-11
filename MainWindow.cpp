@@ -34,9 +34,15 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     settings.load();
 
     m_model->setColumnCount(8);
-    //auto proxyModel = new QSortFilterProxyModel(ui->twPontos);
-    //proxyModel->setSourceModel(m_model);
-    ui->twPontos->setModel(m_model);
+
+    auto proxy = new QSortFilterProxyModel(this);
+    proxy->setSortRole(QtSortRole);
+    proxy->setSourceModel(m_model);
+    proxy->setSortCaseSensitivity(Qt::CaseInsensitive);
+    proxy->setDynamicSortFilter(true);
+    ui->twPontos->setModel(proxy);
+    ui->twPontos->setSortingEnabled(true);
+    proxy->sort(TableModel::PointColumn::Address, Qt::AscendingOrder);
 
     m_protocolController = std::make_unique<ProtocolController>();
     connect(m_protocolController.get(), &ProtocolController::signal_stateChanged, this, &MainWindow::slot_stateChanged);

@@ -15,6 +15,9 @@
 #include <utility>
 #include "TableRow.h"
 
+
+constexpr auto QtSortRole = Qt::UserRole + 1;
+
 class TableModel : public QAbstractTableModel
 {
     Q_OBJECT
