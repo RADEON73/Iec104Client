@@ -10,6 +10,9 @@
 #include <string>
 #include "iec104_types.h"
 
+std::map<int, std::string> iec104_class::mapTiStr;
+std::map<int, std::string> iec104_class::mapCauseStr;
+
 iec104_class::iec104_class()
 {
     memset(slaveIP, 0, sizeof(slaveIP));

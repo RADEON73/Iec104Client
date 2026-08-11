@@ -46,9 +46,11 @@ set(SOURCES
     SettingsDialog.cpp
     AppSettings.cpp
     QIec104.cpp
-    PointController.cpp
     LogController.cpp
     ProtocolController.cpp
+    model/TableCell.cpp
+    model/TableRow.cpp
+    model/TableModel.cpp
     iec104/iec104_class.cpp
     iec104/tLogMsg.cpp
 )
@@ -58,9 +60,11 @@ set(HEADERS
     SettingsDialog.h
     AppSettings.h
     QIec104.h
-    PointController.h
     LogController.h
     ProtocolController.h
+    model/TableCell.h
+    model/TableRow.h
+    model/TableModel.h
     iec104/iec104_class.h
     iec104/iec104_types.h
     iec104/iec104.h

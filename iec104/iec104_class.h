@@ -157,7 +157,7 @@ public:
     void packetReadyTCP();  // user called, when packet ready to be read from tcp
     // connection
 
-    void solicitGI();                           // General Interrogation
+    void solicitGI(); // General Interrogation
     void solicitInterrogation(char group = 20); // Group interrogation
     void setSecondaryIP(char* ip);
     void setSecondaryIP_backup(char* ip);
@@ -173,12 +173,14 @@ public:
     int getPortTCP();
     void setPortTCP(unsigned port);
     void setGIPeriod(unsigned period);
-    std::map<int, std::string> mapTiStr;
-    std::map<int, std::string> mapCauseStr;
-    std::string asduTiStr(int ti);
-    std::string causeStr(int cause);
+
+    static std::string asduTiStr(int ti);
+    static std::string causeStr(int cause);
 
 private:
+    static std::map<int, std::string> mapTiStr;
+    static std::map<int, std::string> mapCauseStr;
+
     unsigned short VS;      // sender packet control counter
     unsigned short VR;      // receiver packet control counter
     void confTestCommand(); // test command activation confirmation

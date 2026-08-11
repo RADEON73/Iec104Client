@@ -26,8 +26,7 @@ public:
 signals:
     void signal_dataIndication(const QVector<iec_obj>& objects);
     void signal_commandActRespIndication(const iec_obj& obj);
-
-    void stateChanged(QAbstractSocket::SocketState);
+    void signal_stateChanged(QAbstractSocket::SocketState);
 
 private slots:
     void slot_tcpconnect(); // tcp connect for iec104

@@ -15,7 +15,7 @@ LogController::LogController(QPlainTextEdit* log, QIec104* i104, QObject* parent
 	m_log(log), 
     m_i104(i104)
 {
-	connect(&tmLogMsg, &QTimer::timeout, this, &LogController::slot_timer_logmsg);
+	connect(&tmLogMsg, &QTimer::timeout, this, &LogController::slot_timerLogmsg);
 	tmLogMsg.start(350);
 
     QFont font = QFont("Consolas");
@@ -49,13 +49,9 @@ void LogController::clear()
 	m_log->clear();
 }
 
-void LogController::slot_timer_logmsg()
+void LogController::slot_timerLogmsg()
 {
     static const int maxLogMsgsPerTick = 250;
-
-    // adjust size of rows and columns
-    if (!(++logTickCount % 50))
-		emit resizeTableRequested();
 
     if (m_i104->mLog.haveMsg()) {
         // append the whole batch inside a single edit block: one layout/paint pass;
@@ -90,6 +86,6 @@ void LogController::slot_timer_logmsg()
         }
         cur.endEditBlock();
 
-        emit logUpdated();
+        emit signal_logUpdated();
     }
 }

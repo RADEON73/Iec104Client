@@ -14,44 +14,43 @@
 #include <qnamespace.h>
 #include <qpalette.h>
 #include <qscrollbar.h>
+#include <qsortfilterproxymodel.h>
 #include <qstring.h>
 #include <qstylefactory.h>
 #include <qwidget.h>
 #include "AppSettings.h"
-#include "iec104/iec104_class.h"
 #include "LogController.h"
-#include "PointController.h"
+#include "model/TableModel.h"
 #include "ProtocolController.h"
-#include "QIec104.h"
 #include "SettingsDialog.h"
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
-    ui(std::make_unique<Ui::MainWindow>())
+    ui(std::make_unique<Ui::MainWindow>()),
+    m_model(new TableModel(this))
 {
     ui->setupUi(this);
 
     auto& settings = AppSettings::instance();
     settings.load();
 
-    m_protocolController = std::make_unique<ProtocolController>();
-    connect(m_protocolController.get(), &ProtocolController::stateChanged,
-        this, &MainWindow::slot_stateChanged);
-    connect(m_protocolController.get(), &ProtocolController::signal_commandActRespIndication,
-        this, &MainWindow::slot_actRespIndication);
+    m_model->setColumnCount(8);
+    //auto proxyModel = new QSortFilterProxyModel(ui->twPontos);
+    //proxyModel->setSourceModel(m_model);
+    ui->twPontos->setModel(m_model);
 
-    m_pointController = std::make_unique<PointController>(ui->twPontos, m_protocolController->i104());
+    m_protocolController = std::make_unique<ProtocolController>();
+    connect(m_protocolController.get(), &ProtocolController::signal_stateChanged, this, &MainWindow::slot_stateChanged);
+    connect(m_protocolController.get(), &ProtocolController::signal_dataIndication, m_model, &TableModel::slot_dataIndication);
+    connect(m_protocolController.get(), &ProtocolController::signal_commandActRespIndication, m_model, &TableModel::slot_commandActRespIndication);
 
 	m_logController = std::make_unique<LogController>(ui->lwLog, m_protocolController->i104());
-	connect(m_logController.get(), &LogController::logUpdated, this, [this]() {
+	connect(m_logController.get(), &LogController::signal_logUpdated, this, [this]() {
 		if (ui->cbAutoScroll->isChecked()) {
             QScrollBar* vbar = ui->lwLog->verticalScrollBar();
             vbar->setValue(vbar->maximum());
 		}
 		});
-	connect(m_logController.get(), &LogController::resizeTableRequested, 
-        m_pointController.get(), &PointController::slot_resizeTable);
     m_logController->setLogState(ui->cbLog->isChecked());
-
 
     auto separator = []() {
         auto f = new QFrame;
@@ -65,12 +64,14 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
 
     on_cb888Mode_stateChanged(ui->cb888Mode->isChecked());
 
-    m_protocolController->reloadProtocolSettings();
-
     ui->cbTheme->setCurrentIndex(0);
     on_cbTheme_currentIndexChanged(0);
     connect(ui->cbTheme, QOverload<int>::of(&QComboBox::currentIndexChanged), 
         this, &MainWindow::on_cbTheme_currentIndexChanged);
+
+    QList<int> sizes;
+    sizes << ui->splitter->height() << 0; // Первый занимает всё, второй скрыт
+    ui->splitter->setSizes(sizes);
 }
 
 MainWindow::~MainWindow() = default;
@@ -89,14 +90,13 @@ void MainWindow::on_pbSettingsDialog_clicked()
 {
 	auto dlg = new SettingsDialog(this);
     dlg->setAttribute(Qt::WA_DeleteOnClose);
-    connect(dlg, &SettingsDialog::settingsChanged, 
-        m_protocolController.get(), &ProtocolController::reloadProtocolSettings);
+    connect(dlg, &SettingsDialog::settingsChanged, m_protocolController.get(), &ProtocolController::slot_reloadProtocolSettings);
     dlg->show();
 }
 
 void MainWindow::on_pbSendCommandsButton_clicked()
 {
-    CommandData data{};
+    ProtocolController::CommandData data{};
 	data.cb888Mode = ui->cb888Mode->isChecked();
     data.leCmdAddressLow = ui->leCmdAddressLow->text();
     data.leCmdAddressMid = ui->leCmdAddressMid->text();
@@ -107,30 +107,14 @@ void MainWindow::on_pbSendCommandsButton_clicked()
 	data.cbCmdDuration = ui->cbCmdDuration->currentText();
 	data.leCmdValue = ui->leCmdValue->text();
 	data.cbSBO = ui->cbSBO->isChecked();
-	m_pointController->sendCommand(data);
-}
-
-void MainWindow::slot_actRespIndication(const iec_obj& obj)
-{
-    CommandData data{};
-    data.cb888Mode = ui->cb888Mode->isChecked();
-    data.leCmdAddressLow = ui->leCmdAddressLow->text();
-    data.leCmdAddressMid = ui->leCmdAddressMid->text();
-    data.leCmdAddressHigh = ui->leCmdAddressHigh->text();
-    data.leCmdAddress = ui->leCmdAddress->text();
-    data.leASDUAddr = ui->leASDUAddr->text();
-    data.cbCmdAsdu = ui->cbCmdAsdu->currentText();
-    data.cbCmdDuration = ui->cbCmdDuration->currentText();
-    data.leCmdValue = ui->leCmdValue->text();
-    data.cbSBO = ui->cbSBO->isChecked();
-    m_pointController->commandActRespIndication1(data, obj);
+	m_protocolController->request_SendData(data);
 }
 
 void MainWindow::slot_stateChanged(QAbstractSocket::SocketState state)
 {
 	switch (state) {
     case QAbstractSocket::ConnectedState:
-        m_pointController->clear();
+        m_model->clear();
         m_lbStatus.setText("<font color='green'> Соединение установлено </font>");
         ui->pbGI->setEnabled(true);
         ui->sendCommand->setEnabled(true);
@@ -190,7 +174,7 @@ void MainWindow::on_pbCopyClipb_clicked()
 
 void MainWindow::on_pbCopyVals_clicked()
 {
-    m_pointController->copyToClipboard();
+    m_model->copyToClipboard();
 }
 
 void MainWindow::on_cbTheme_currentIndexChanged(int index)
@@ -231,5 +215,5 @@ void MainWindow::on_cb888Mode_stateChanged(int arg1)
     ui->leCmdAddressMid->setVisible(arg1);
     ui->leCmdAddressHigh->setVisible(arg1);
 
-	m_pointController->set888Mode(arg1);
+	m_model->set888Mode(arg1);
 }

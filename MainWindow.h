@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <model/TableModel.h>
 #include <qabstractsocket.h>
 #include <qevent.h>
 #include <qglobal.h>
@@ -7,7 +8,6 @@
 #include <qmainwindow.h>
 #include <qobjectdefs.h>
 #include <qwidget.h>
-#include "iec104/iec104_class.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -33,25 +33,21 @@ private slots:
     void on_pbSendCommandsButton_clicked(); // Send Command pressed
     void on_pbConnect_clicked(); // connect button pressed
     void on_pbGI_clicked(); // GI button pressed
-
-    void slot_actRespIndication(const iec_obj& obj);
-
-    void slot_stateChanged(QAbstractSocket::SocketState state); // State changed for iec104
-
     void on_pbCopyVals_clicked(); // copy values table to clipboard
     void on_cbTheme_currentIndexChanged(int index); // Theme selection changed
-
     void on_cb888Mode_stateChanged(int arg1);
-
     void on_cbLog_clicked(); // Check box for log messages changed
     void on_pbCopyClipb_clicked(); // copy log messages to clipboard
+
+    void slot_stateChanged(QAbstractSocket::SocketState state); // State changed for iec104
 
 private:
     std::unique_ptr<Ui::MainWindow> ui;
 
     std::unique_ptr<ProtocolController> m_protocolController;
-    std::unique_ptr<PointController> m_pointController;
     std::unique_ptr<LogController> m_logController;
+
+    TableModel* m_model = nullptr;
 
     QLabel m_lbStatus;
 };

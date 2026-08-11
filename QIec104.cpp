@@ -26,7 +26,7 @@ QIec104::QIec104(QObject* parent)
     mLog.doLogTime();
 
     m_tcps->setSocketOption(QAbstractSocket::LowDelayOption, 1);
-    connect(m_tcps, &QTcpSocket::stateChanged, this, &QIec104::stateChanged);
+    connect(m_tcps, &QTcpSocket::stateChanged, this, &QIec104::signal_stateChanged);
     connect(m_tcps, &QTcpSocket::readyRead, this, &QIec104::slot_tcpReadyRead);
     connect(m_tcps, &QTcpSocket::connected, this, &QIec104::slot_tcpconnect);
     connect(m_tcps, &QTcpSocket::disconnected, this, &QIec104::slot_tcpdisconnect);
@@ -77,23 +77,18 @@ void QIec104::connectTCP()
 
     m_reconnectEnabled = true;
 
-    char buf[100];
-
     m_tcps->abort();
 
     if (!m_shutdownRequested) {
         mConnectAttemptCounter++;
-        // alternate main and backup UTR IP address, if configured
-        if (mConnectAttemptCounter % 2 || strcmp(getSecondaryIP_backup(), "0.0.0.0") == 0) {
-            m_tcps->connectToHost(getSecondaryIP(), quint16(getPortTCP()), QIODevice::ReadWrite);
-            sprintf(buf, "Попытка подключения к IP: %s", getSecondaryIP());
-            mLog.pushMsg(const_cast<char*>(buf));
-        }
-        else {
-            m_tcps->connectToHost(getSecondaryIP_backup(), quint16(getPortTCP()), QIODevice::ReadWrite);
-            sprintf(buf, "Попытка подключения к IP: %s", getSecondaryIP_backup());
-            mLog.pushMsg(const_cast<char*>(buf));
-        }
+        char* ipAddr = nullptr;
+        if (mConnectAttemptCounter % 2 || strcmp(getSecondaryIP_backup(), "0.0.0.0") == 0)
+            ipAddr = getSecondaryIP();
+        else
+            ipAddr = getSecondaryIP_backup();
+        m_tcps->connectToHost(ipAddr, quint16(getPortTCP()), QIODevice::ReadWrite);
+        auto msg = QString("Попытка подключения к IP: %1").arg(ipAddr);
+        mLog.pushMsg(msg.toUtf8().constData());
     }
 
     onConnectTCP();
@@ -115,9 +110,8 @@ QAbstractSocket::SocketState QIec104::connectionState() const
 void QIec104::slot_tcperror(QAbstractSocket::SocketError socketError)
 {
     if (socketError != QAbstractSocket::SocketTimeoutError) {
-        char buf[100];
-        sprintf(buf, "Ошибка сокета: %d", socketError);
-        mLog.pushMsg(const_cast<char*>(buf));
+        auto msg = QString("Ошибка сокета: %1").arg(socketError);
+        mLog.pushMsg(msg.toUtf8().constData());
     }
     else {
         mLog.pushMsg(m_tcps->errorString().toStdString().c_str());

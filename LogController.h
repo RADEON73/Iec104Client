@@ -20,11 +20,10 @@ public:
 	void clear();
 
 signals:
-	void logUpdated();
-	void resizeTableRequested();
+	void signal_logUpdated();
 
 private slots:
-	void slot_timer_logmsg(); // timer for log messages
+	void slot_timerLogmsg(); // timer for log messages
 
 private:
 	QPlainTextEdit* m_log;
