@@ -14,6 +14,12 @@ class QIec104 : public QObject, public iec104_class
     Q_OBJECT
 
 public:
+    enum class Server
+    {
+        Primary,
+        Backup
+    };
+
     explicit QIec104(QObject* parent = 0);
     ~QIec104();
 
@@ -36,6 +42,10 @@ private slots:
     void slot_keep_alive();
     void slot_reconnect();
 
+    void slot_checkPrimary();
+    void slot_primaryProbeConnected();
+    void slot_primaryProbeError(QAbstractSocket::SocketError socketError);
+
 private: // redefine for iec104_class
     void waitBytes(int bytes, int msTout) final;
     void connectTCP() final;
@@ -50,15 +60,21 @@ private: // redefine for iec104_class
     void commandActRespIndication(iec_obj* obj) final;
     void userprocAPDU(iec_apdu* papdu, int sz) final {}
 
+    const char* currentServerIP();
+    bool hasBackupServer();
+
 private:
     QTimer* m_tmKeepAlive = nullptr; // 1 second timer Iec-104
+
+    Server m_currentServer = Server::Primary; //Тип текущего сервера
 
     bool m_shutdownRequested = false; //shutdown request
     bool m_reconnectEnabled = true; //reconnect enabled
 
     QTcpSocket* m_tcps = nullptr; // iec104 socket(tcp)
-    QTimer* m_tcps_reconnect; //reconnect timer for iec104 socket
+    QTcpSocket* m_primaryProbe = nullptr; //primary checkLife socket
 
-
-    unsigned int mConnectAttemptCounter = 0;
+    QTimer* m_tcps_reconnect = nullptr; //reconnect timer for iec104 socket
+    QTimer* m_primaryCheckTimer = nullptr; //checker for primary server life
+    bool m_switchToPrimary = false; //Флаг блокировки ложного переключения
 };

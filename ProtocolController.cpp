@@ -19,6 +19,8 @@ ProtocolController::ProtocolController(QObject *parent)
     m_i104(new QIec104())
 {
     qRegisterMetaType<QAbstractSocket::SocketState>();
+    qRegisterMetaType<iec_obj>("iec_obj");
+    qRegisterMetaType<QVector<iec_obj>>("QVector<iec_obj>");
 
     connect(m_i104, &QIec104::signal_stateChanged, this, &ProtocolController::signal_stateChanged);
     connect(m_i104, &QIec104::signal_commandActRespIndication, this, &ProtocolController::signal_commandActRespIndication);

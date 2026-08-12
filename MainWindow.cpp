@@ -4,16 +4,14 @@
 #include <memory>
 #include <qabstractsocket.h>
 #include <qapplication.h>
-#include <qcheckbox.h>
 #include <qcolor.h>
 #include <qcombobox.h>
 #include <qframe.h>
 #include <qglobal.h>
-#include <qgroupbox.h>
+#include <qlabel.h>
 #include <qmainwindow.h>
 #include <qnamespace.h>
 #include <qpalette.h>
-#include <qpushbutton.h>
 #include <qsortfilterproxymodel.h>
 #include <qstylefactory.h>
 #include <qwidget.h>
@@ -22,9 +20,7 @@
 #include "model/TableModel.h"
 #include "model/TableProxyModel.h"
 #include "ProtocolController.h"
-#include "QIec104.h"
 #include "SettingsDialog.h"
-#include <qlabel.h>
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     ui(std::make_unique<Ui::MainWindow>())
