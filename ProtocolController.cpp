@@ -4,7 +4,6 @@
 #include <functional>
 #include <qabstractsocket.h>
 #include <qdatetime.h>
-#include <qmetatype.h>
 #include <qnamespace.h>
 #include <qobject.h>
 #include <qobjectdefs.h>
@@ -18,10 +17,6 @@ ProtocolController::ProtocolController(QObject *parent)
     : QObject(parent),
     m_i104(new QIec104())
 {
-    qRegisterMetaType<QAbstractSocket::SocketState>();
-    qRegisterMetaType<iec_obj>("iec_obj");
-    qRegisterMetaType<QVector<iec_obj>>("QVector<iec_obj>");
-
     connect(m_i104, &QIec104::signal_stateChanged, this, &ProtocolController::signal_stateChanged);
     connect(m_i104, &QIec104::signal_commandActRespIndication, this, &ProtocolController::signal_commandActRespIndication);
     connect(m_i104, &QIec104::signal_dataIndication, this, &ProtocolController::signal_dataIndication);

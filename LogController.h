@@ -19,6 +19,7 @@ public:
 	void setLogState(bool state);
 	void copyToClipboard(bool checked = false);
 	void setAutoScrollState(bool state);
+	void setTrafficLogState(bool state);
 
 signals:
 	void signal_logUpdated();
@@ -30,7 +31,8 @@ private:
 	iec104_log* m_logQueue;
 	QPlainTextEdit* m_logUI;
 
-	bool m_autoScroll;
+	bool m_autoScroll = true;
+	bool m_trafficLog = true;
 	QTimer m_tmLogMsg; // timer to show log messages
 };
 

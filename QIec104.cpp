@@ -1,11 +1,8 @@
 #include "QIec104.h"
 
-#include <cstdio>
 #include <qabstractsocket.h>
 #include <qglobal.h>
-#include <qhostaddress.h>
 #include <qiodevice.h>
-#include <qnamespace.h>
 #include <qobject.h>
 #include <qobjectdefs.h>
 #include <qstring.h>
@@ -14,7 +11,6 @@
 #include <qvector.h>
 #include <string>
 #include "iec104/iec104_class.h"
-#include <qthread.h>
 
 QIec104::QIec104(QObject* parent) 
     : QObject(parent),
@@ -26,10 +22,6 @@ QIec104::QIec104(QObject* parent)
 {
     mLog.activateLog();
     mLog.doLogTime();
-
-    qRegisterMetaType<QAbstractSocket::SocketState>();
-    qRegisterMetaType<iec_obj>("iec_obj");
-    qRegisterMetaType<QVector<iec_obj>>("QVector<iec_obj>");
 
     connect(m_tmKeepAlive, &QTimer::timeout, this, &QIec104::slot_keep_alive);
 
@@ -145,7 +137,6 @@ void QIec104::slot_tcperror(QAbstractSocket::SocketError socketError)
             m_primaryCheckTimer->start();
         }
         m_tcps_reconnect->start();
-        mLog.pushMsg("!!!!!Переподключение...");
     }
 }
 
@@ -219,8 +210,6 @@ void QIec104::slot_tcpdisconnect()
     }
 
     m_tcps_reconnect->start();
-
-    mLog.pushMsg("!!!!!Переподключение...");
 }
 
 void QIec104::slot_reconnect()

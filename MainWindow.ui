@@ -526,7 +526,23 @@ If empty will use remote link address.</string>
           </property>
          </widget>
         </item>
-        <item row="0" column="0">
+        <item row="1" column="1">
+         <widget class="QCheckBox" name="cb_LogTraffic">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="text">
+           <string>Отображать лог траффика</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0" colspan="2">
          <widget class="QPlainTextEdit" name="pte_LogData">
           <property name="font">
            <font>
@@ -548,7 +564,7 @@ If empty will use remote link address.</string>
           </property>
          </widget>
         </item>
-        <item row="2" column="0">
+        <item row="2" column="0" colspan="2">
          <widget class="QPushButton" name="pb_LogCopy">
           <property name="text">
            <string>Копировать лог</string>

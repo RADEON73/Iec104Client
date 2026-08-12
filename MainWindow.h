@@ -38,6 +38,7 @@ private slots:
     void on_gb_LogOn_toggled(bool on); //Включить/отключить лог
     void on_cb_LogAutoscroll_toggled(bool on); //Автоскролл к концу лога
     void on_pb_LogCopy_clicked(); //Копирует содержимое лога в буфер
+    void on_cb_LogTraffic_toggled(bool on); //Включает скрывает отображение подробного лога траффика
 
     void slot_stateChanged(QAbstractSocket::SocketState state); // State changed for iec104
 

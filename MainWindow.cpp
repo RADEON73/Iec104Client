@@ -219,3 +219,9 @@ void MainWindow::on_pb_LogCopy_clicked()
     if (m_logController)
         m_logController->copyToClipboard();
 }
+
+void MainWindow::on_cb_LogTraffic_toggled(bool on)
+{
+    if (m_logController)
+        m_logController->setTrafficLogState(on);
+}

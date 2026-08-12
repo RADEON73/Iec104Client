@@ -32,7 +32,6 @@ LogController::LogController(iec104_log* logQueue, QPlainTextEdit* logUI, QObjec
     m_tmLogMsg.start(350);
 
     setLogState(true);
-    setAutoScrollState(true);
 }
 
 LogController::~LogController() = default;
@@ -58,6 +57,11 @@ void LogController::setLogState(bool state)
 void LogController::setAutoScrollState(bool state)
 {
     m_autoScroll = state;
+}
+
+void LogController::setTrafficLogState(bool state)
+{
+    m_trafficLog = state;
 }
 
 void LogController::clear()
