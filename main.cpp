@@ -1,10 +1,10 @@
 #include <qapplication.h>
+#include <qicon.h>
 #include <qmetatype.h>
 #include <qnetworkproxy.h>
 #include <qvector.h>
 #include "iec104/iec104_class.h"
 #include "MainWindow.h"
-#include <qicon.h>
 
 int main(int argc, char* argv[])
 {

@@ -1,30 +1,42 @@
 cmake_minimum_required(VERSION 3.16)
+
 project(Iec104Client VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 set(CMAKE_INCLUDE_CURRENT_DIR ON) #Упрощенное включение
 set(CMAKE_CXX_EXTENSIONS OFF) #Более строгий стандарт
-set(QT_USE_STATIC_LIBS ON) # Настройка статической линковки Qt
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-option(USE_STATIC_RUNTIME "Build with static runtime (/MT) instead of dynamic (/MD)" ON)
+option(USE_STATIC_RUNTIME
+    "Build with static runtime (/MT) instead of dynamic (/MD)"
+    ON
+)
 
-if(WIN32)
-    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
-    add_compile_definitions(UNICODE _UNICODE)
-	if(USE_STATIC_RUNTIME)
-        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-        message(STATUS "Build with static runtime: ON")
-    else()
-        set(
-            "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
-        message(STATUS "Build with static runtime: OFF")
-    endif()
+if(USE_STATIC_RUNTIME)
+    set(QT_ROOT "$ENV{QT_ROOT_STATIC}")
+    set(QT_ROOT_NAME "QT_ROOT_STATIC")
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    message(STATUS "Build with static runtime: ON")
+else()
+    set(QT_ROOT "$ENV{QT_ROOT_DYNAMIC}")
+    set(QT_ROOT_NAME "QT_ROOT_DYNAMIC")
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+    message(STATUS "Build with static runtime: OFF")
+endif()
+
+if(QT_ROOT)
+    message(STATUS "${QT_ROOT_NAME} is set: ${QT_ROOT}")
+    list(PREPEND CMAKE_PREFIX_PATH
+        "${QT_ROOT}"
+    )
+else()
+    message(STATUS
+        "${QT_ROOT_NAME} is not set, using default Qt search"
+    )
 endif()
 
 find_package(Qt5 REQUIRED COMPONENTS
@@ -32,13 +44,6 @@ find_package(Qt5 REQUIRED COMPONENTS
     Widgets
     Network
 )
-
-if(MSVC)
-    # Для статической линковки CRT
-	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
-endif()
 
 set(SOURCES
     main.cpp
