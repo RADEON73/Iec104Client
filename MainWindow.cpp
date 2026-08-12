@@ -4,59 +4,55 @@
 #include <memory>
 #include <qabstractsocket.h>
 #include <qapplication.h>
+#include <qcheckbox.h>
 #include <qcolor.h>
 #include <qcombobox.h>
-#include <qcoreevent.h>
-#include <qevent.h>
 #include <qframe.h>
 #include <qglobal.h>
+#include <qgroupbox.h>
 #include <qmainwindow.h>
 #include <qnamespace.h>
 #include <qpalette.h>
-#include <qscrollbar.h>
+#include <qpushbutton.h>
 #include <qsortfilterproxymodel.h>
-#include <qstring.h>
 #include <qstylefactory.h>
 #include <qwidget.h>
 #include "AppSettings.h"
 #include "LogController.h"
 #include "model/TableModel.h"
+#include "model/TableProxyModel.h"
 #include "ProtocolController.h"
+#include "QIec104.h"
 #include "SettingsDialog.h"
+#include <qlabel.h>
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
-    ui(std::make_unique<Ui::MainWindow>()),
-    m_model(new TableModel(this))
+    ui(std::make_unique<Ui::MainWindow>())
 {
     ui->setupUi(this);
 
     auto& settings = AppSettings::instance();
     settings.load();
 
+    //Создаем модель
+    m_model = std::make_unique<TableModel>();
     m_model->setColumnCount(8);
+    auto proxyModel = new TableProxyModel(ui->tv_Points);
+    proxyModel->setSourceModel(m_model.get());
+    ui->tv_Points->setModel(proxyModel);
+    ui->tv_Points->horizontalHeader()->setSortIndicator(TableModel::PointColumn::Address, Qt::AscendingOrder);
 
-    auto proxy = new QSortFilterProxyModel(this);
-    proxy->setSortRole(QtSortRole);
-    proxy->setSourceModel(m_model);
-    proxy->setSortCaseSensitivity(Qt::CaseInsensitive);
-    proxy->setDynamicSortFilter(true);
-    ui->twPontos->setModel(proxy);
-    ui->twPontos->setSortingEnabled(true);
-    proxy->sort(TableModel::PointColumn::Address, Qt::AscendingOrder);
-
+    //Создаем протокол
     m_protocolController = std::make_unique<ProtocolController>();
-    connect(m_protocolController.get(), &ProtocolController::signal_stateChanged, this, &MainWindow::slot_stateChanged);
-    connect(m_protocolController.get(), &ProtocolController::signal_dataIndication, m_model, &TableModel::slot_dataIndication);
-    connect(m_protocolController.get(), &ProtocolController::signal_commandActRespIndication, m_model, &TableModel::slot_commandActRespIndication);
+    connect(m_protocolController.get(), &ProtocolController::signal_stateChanged, 
+        this, &MainWindow::slot_stateChanged);
+    connect(m_protocolController.get(), &ProtocolController::signal_dataIndication,
+        m_model.get(), &TableModel::slot_dataIndication);
+    connect(m_protocolController.get(), &ProtocolController::signal_commandActRespIndication, 
+        m_model.get(), &TableModel::slot_commandActRespIndication);
 
-	m_logController = std::make_unique<LogController>(ui->lwLog, m_protocolController->i104());
-	connect(m_logController.get(), &LogController::signal_logUpdated, this, [this]() {
-		if (ui->cbAutoScroll->isChecked()) {
-            QScrollBar* vbar = ui->lwLog->verticalScrollBar();
-            vbar->setValue(vbar->maximum());
-		}
-		});
-    m_logController->setLogState(ui->cbLog->isChecked());
+    //Создаем лог
+	m_logController = std::make_unique<LogController>(m_protocolController->logQueue(), ui->pte_LogData);
 
     auto separator = []() {
         auto f = new QFrame;
@@ -68,53 +64,17 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     statusBar()->addPermanentWidget(separator());
     statusBar()->addPermanentWidget(new QLabel(settings.VERSION));
 
-    on_cb888Mode_stateChanged(ui->cb888Mode->isChecked());
+    on_cb_888Mode_stateChanged(ui->cb_888Mode->isChecked());
 
-    ui->cbTheme->setCurrentIndex(0);
-    on_cbTheme_currentIndexChanged(0);
-    connect(ui->cbTheme, QOverload<int>::of(&QComboBox::currentIndexChanged), 
-        this, &MainWindow::on_cbTheme_currentIndexChanged);
+    ui->cb_Theme->setCurrentIndex(0);
+    on_cb_Theme_currentIndexChanged(0);
+    connect(ui->cb_Theme, QOverload<int>::of(&QComboBox::currentIndexChanged), 
+        this, &MainWindow::on_cb_Theme_currentIndexChanged);
 
-    QList<int> sizes;
-    sizes << ui->splitter->height() << 0; // Первый занимает всё, второй скрыт
-    ui->splitter->setSizes(sizes);
+    ui->splitter->setSizes( {1, 0} );
 }
 
 MainWindow::~MainWindow() = default;
-
-void MainWindow::on_pbGI_clicked()
-{
-    m_protocolController->request_GI();
-}
-
-void MainWindow::on_pbConnect_clicked()
-{
-    m_protocolController->request_Connect();
-}
-
-void MainWindow::on_pbSettingsDialog_clicked()
-{
-	auto dlg = new SettingsDialog(this);
-    dlg->setAttribute(Qt::WA_DeleteOnClose);
-    connect(dlg, &SettingsDialog::settingsChanged, m_protocolController.get(), &ProtocolController::slot_reloadProtocolSettings);
-    dlg->show();
-}
-
-void MainWindow::on_pbSendCommandsButton_clicked()
-{
-    ProtocolController::CommandData data{};
-	data.cb888Mode = ui->cb888Mode->isChecked();
-    data.leCmdAddressLow = ui->leCmdAddressLow->text();
-    data.leCmdAddressMid = ui->leCmdAddressMid->text();
-	data.leCmdAddressHigh = ui->leCmdAddressHigh->text();
-	data.leCmdAddress = ui->leCmdAddress->text();
-	data.leASDUAddr = ui->leASDUAddr->text();
-	data.cbCmdAsdu = ui->cbCmdAsdu->currentText();
-	data.cbCmdDuration = ui->cbCmdDuration->currentText();
-	data.leCmdValue = ui->leCmdValue->text();
-	data.cbSBO = ui->cbSBO->isChecked();
-	m_protocolController->request_SendData(data);
-}
 
 void MainWindow::slot_stateChanged(QAbstractSocket::SocketState state)
 {
@@ -122,27 +82,27 @@ void MainWindow::slot_stateChanged(QAbstractSocket::SocketState state)
     case QAbstractSocket::ConnectedState:
         m_model->clear();
         m_lbStatus.setText("<font color='green'> Соединение установлено </font>");
-        ui->pbGI->setEnabled(true);
-        ui->sendCommand->setEnabled(true);
-        ui->pbConnect->setText("Отключить");
-        ui->pbSettingsDialog->setEnabled(false);
+        ui->pb_PointsGI->setEnabled(true);
+        ui->pb_SendCommand->setEnabled(true);
+        ui->pb_Connect->setText("Отключить");
+        ui->pb_SettingsDialog->setEnabled(false);
         break;
 	case QAbstractSocket::UnconnectedState:
         m_lbStatus.setText("<font color='red'> Сокет не подключен </font>");
-        ui->pbGI->setEnabled(false);
-        ui->sendCommand->setEnabled(false);
-        ui->pbConnect->setText("Подключить");
-        ui->pbSettingsDialog->setEnabled(true);
+        ui->pb_PointsGI->setEnabled(false);
+        ui->pb_SendCommand->setEnabled(false);
+        ui->pb_Connect->setText("Подключить");
+        ui->pb_SettingsDialog->setEnabled(true);
 		break;
 	case QAbstractSocket::HostLookupState:
         m_lbStatus.setText("<font color='blue'> Выполняется DNS-разрешение имени </font>");
         break;
 	case QAbstractSocket::ConnectingState:
         m_lbStatus.setText("<font color='blue'> Идет установка TCP-соединения... </font>");
-        ui->pbGI->setEnabled(false);
-        ui->sendCommand->setEnabled(false);
-        ui->pbConnect->setText("Прервать");
-        ui->pbSettingsDialog->setEnabled(false);
+        ui->pb_PointsGI->setEnabled(false);
+        ui->pb_SendCommand->setEnabled(false);
+        ui->pb_Connect->setText("Прервать");
+        ui->pb_SettingsDialog->setEnabled(false);
         break;
     case QAbstractSocket::BoundState:
         m_lbStatus.setText("<font color='blue'> Состояние BoundState </font>");
@@ -152,10 +112,10 @@ void MainWindow::slot_stateChanged(QAbstractSocket::SocketState state)
 		break;
 	case QAbstractSocket::ClosingState:
         m_lbStatus.setText("<font color='blue'> Выполняется отключение... </font>");
-        ui->pbGI->setEnabled(false);
-        ui->sendCommand->setEnabled(false);
-        ui->pbConnect->setText("Закрытие сокета");
-        ui->pbSettingsDialog->setEnabled(false);
+        ui->pb_PointsGI->setEnabled(false);
+        ui->pb_SendCommand->setEnabled(false);
+        ui->pb_Connect->setText("Закрытие сокета");
+        ui->pb_SettingsDialog->setEnabled(false);
 		break;
 	default:
         m_lbStatus.setText("<font color='blue'> Соединение UNKNOWN </font>");
@@ -163,27 +123,31 @@ void MainWindow::slot_stateChanged(QAbstractSocket::SocketState state)
 	}
 }
 
-void MainWindow::closeEvent(QCloseEvent* event)
+void MainWindow::on_cb_888Mode_stateChanged(int state)
 {
-    event->accept();
+    ui->leCmdAddress->setVisible(!state);
+    ui->leCmdAddressLow->setVisible(state);
+    ui->leCmdAddressMid->setVisible(state);
+    ui->leCmdAddressHigh->setVisible(state);
+
+	m_model->set888Mode(state);
 }
 
-void MainWindow::on_cbLog_clicked()
+void MainWindow::on_pb_SettingsDialog_clicked()
 {
-    m_logController->setLogState(ui->cbLog->isChecked());
+    auto dlg = new SettingsDialog(this);
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
+    connect(dlg, &SettingsDialog::signal_settingsChanged, m_protocolController.get(), &ProtocolController::slot_reloadProtocolSettings);
+    dlg->show();
 }
 
-void MainWindow::on_pbCopyClipb_clicked()
+void MainWindow::on_pb_Connect_clicked()
 {
-    m_logController->copyToClipboard();
+    if (m_protocolController)
+        m_protocolController->requestConnect();
 }
 
-void MainWindow::on_pbCopyVals_clicked()
-{
-    m_model->copyToClipboard();
-}
-
-void MainWindow::on_cbTheme_currentIndexChanged(int index)
+void MainWindow::on_cb_Theme_currentIndexChanged(int index)
 {
     if (index == 1) { // Dark
         qApp->setStyle(QStyleFactory::create("Fusion"));
@@ -214,12 +178,48 @@ void MainWindow::on_cbTheme_currentIndexChanged(int index)
     }
 }
 
-void MainWindow::on_cb888Mode_stateChanged(int arg1)
+void MainWindow::on_pb_PointsGI_clicked()
 {
-    ui->leCmdAddress->setVisible(!arg1);
-    ui->leCmdAddressLow->setVisible(arg1);
-    ui->leCmdAddressMid->setVisible(arg1);
-    ui->leCmdAddressHigh->setVisible(arg1);
+    if (m_protocolController)
+        m_protocolController->requestGI();
+}
 
-	m_model->set888Mode(arg1);
+void MainWindow::on_pb_PointsCopy_clicked()
+{
+    if (m_model)
+        m_model->copyToClipboard();
+}
+
+void MainWindow::on_pb_SendCommand_clicked()
+{
+    ProtocolController::CommandData data{};
+    data.cb888Mode = ui->cb_888Mode->isChecked();
+    data.leCmdAddressLow = ui->leCmdAddressLow->text();
+    data.leCmdAddressMid = ui->leCmdAddressMid->text();
+    data.leCmdAddressHigh = ui->leCmdAddressHigh->text();
+    data.leCmdAddress = ui->leCmdAddress->text();
+    data.leASDUAddr = ui->leASDUAddr->text();
+    data.cbCmdAsdu = ui->cbCmdAsdu->currentText();
+    data.cbCmdDuration = ui->cbCmdDuration->currentText();
+    data.leCmdValue = ui->leCmdValue->text();
+    data.cbSBO = ui->cbSBO->isChecked();
+    m_protocolController->requestSendData(data);
+}
+
+void MainWindow::on_gb_LogOn_toggled(bool on)
+{
+    if (m_logController)
+        m_logController->setLogState(on);
+}
+
+void MainWindow::on_cb_LogAutoscroll_toggled(bool on)
+{
+    if (m_logController)
+        m_logController->setAutoScrollState(on);
+}
+
+void MainWindow::on_pb_LogCopy_clicked()
+{
+    if (m_logController)
+        m_logController->copyToClipboard();
 }

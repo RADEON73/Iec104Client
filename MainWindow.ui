@@ -22,14 +22,14 @@
     <item row="0" column="0">
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
-       <widget class="QPushButton" name="pbSettingsDialog">
+       <widget class="QPushButton" name="pb_SettingsDialog">
         <property name="text">
          <string>Настройки</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="pbConnect">
+       <widget class="QPushButton" name="pb_Connect">
         <property name="text">
          <string>Подключить</string>
         </property>
@@ -62,7 +62,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QComboBox" name="cbTheme">
+       <widget class="QComboBox" name="cb_Theme">
         <property name="toolTip">
          <string>Change application theme</string>
         </property>
@@ -116,7 +116,10 @@
           <number>2</number>
          </property>
          <item row="1" column="0">
-          <widget class="QTableView" name="twPontos">
+          <widget class="QTableView" name="tv_Points">
+           <property name="editTriggers">
+            <set>QAbstractItemView::NoEditTriggers</set>
+           </property>
            <property name="alternatingRowColors">
             <bool>true</bool>
            </property>
@@ -144,7 +147,7 @@
           </widget>
          </item>
          <item row="0" column="0" colspan="2">
-          <widget class="QPushButton" name="pbGI">
+          <widget class="QPushButton" name="pb_PointsGI">
            <property name="enabled">
             <bool>false</bool>
            </property>
@@ -154,7 +157,7 @@
           </widget>
          </item>
          <item row="2" column="0" colspan="2">
-          <widget class="QPushButton" name="pbCopyVals">
+          <widget class="QPushButton" name="pb_PointsCopy">
            <property name="text">
             <string>Копировать карту сигналов</string>
            </property>
@@ -208,7 +211,7 @@ Use 1 or 2 for digital double</string>
           </widget>
          </item>
          <item row="15" column="1">
-          <widget class="QPushButton" name="pbSendCommandsButton">
+          <widget class="QPushButton" name="pb_SendCommand">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -337,7 +340,7 @@ Use 1 or 2 for digital double</string>
           </widget>
          </item>
          <item row="1" column="1">
-          <widget class="QCheckBox" name="cb888Mode">
+          <widget class="QCheckBox" name="cb_888Mode">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -490,7 +493,7 @@ If empty will use remote link address.</string>
         </layout>
        </widget>
       </widget>
-      <widget class="QGroupBox" name="cbLog">
+      <widget class="QGroupBox" name="gb_LogOn">
        <property name="title">
         <string>Включить логирование</string>
        </property>
@@ -513,8 +516,18 @@ If empty will use remote link address.</string>
         <property name="spacing">
          <number>2</number>
         </property>
+        <item row="1" column="0">
+         <widget class="QCheckBox" name="cb_LogAutoscroll">
+          <property name="text">
+           <string>Автоскролл</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
         <item row="0" column="0">
-         <widget class="QPlainTextEdit" name="lwLog">
+         <widget class="QPlainTextEdit" name="pte_LogData">
           <property name="font">
            <font>
             <family>Courier New</family>
@@ -535,18 +548,8 @@ If empty will use remote link address.</string>
           </property>
          </widget>
         </item>
-        <item row="1" column="0">
-         <widget class="QCheckBox" name="cbAutoScroll">
-          <property name="text">
-           <string>Автоскролл</string>
-          </property>
-          <property name="checked">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
         <item row="2" column="0">
-         <widget class="QPushButton" name="pbCopyClipb">
+         <widget class="QPushButton" name="pb_LogCopy">
           <property name="text">
            <string>Копировать лог</string>
           </property>

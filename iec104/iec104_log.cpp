@@ -1,31 +1,31 @@
-#include "tLogMsg.h"
+#include "iec104_log.h"
 
 #include <ctime>
 #include <qmutex.h>
 #include <string>
 
-TLogMsg::TLogMsg() = default;
-TLogMsg::~TLogMsg() = default;
+iec104_log::iec104_log() = default;
+iec104_log::~iec104_log() = default;
 
-void TLogMsg::setMaxMsg(unsigned int maxmsg)
+void iec104_log::setMaxMsg(unsigned int maxmsg)
 {
     QMutexLocker locker(&mMutex);
     mMaxMsg = maxmsg;
 }
 
-void TLogMsg::setLevel(unsigned int level)
+void iec104_log::setLevel(unsigned int level)
 {
     QMutexLocker locker(&mMutex);
     mLevel = level;
 }
 
-void TLogMsg::activateLog()
+void iec104_log::activateLog()
 {
     QMutexLocker locker(&mMutex);
     mDoLog = true;
 }
 
-void TLogMsg::deactivateLog()
+void iec104_log::deactivateLog()
 {
     QMutexLocker locker(&mMutex);
     mLstLog.clear(); // clean lists
@@ -33,7 +33,7 @@ void TLogMsg::deactivateLog()
     mDoLog = false;
 }
 
-void TLogMsg::doLogTime()
+void iec104_log::doLogTime()
 {
     QMutexLocker locker(&mMutex);
     mLstLog.clear(); // clean lists, sync
@@ -41,26 +41,26 @@ void TLogMsg::doLogTime()
     mRegTime = true;
 }
 
-void TLogMsg::dontLogTime()
+void iec104_log::dontLogTime()
 {
     QMutexLocker locker(&mMutex);
     mRegTime = false;
 }
 
-bool TLogMsg::haveMsg()
+bool iec104_log::haveMsg()
 {
     QMutexLocker locker(&mMutex);
     return !mLstLog.empty();
 }
 
-bool TLogMsg::isLogging()
+bool iec104_log::isLogging()
 {
     QMutexLocker locker(&mMutex);
     return mDoLog;
 }
 
 // coloca a mensagem na fila
-void TLogMsg::pushMsg( const char * msg, unsigned int level )
+void iec104_log::pushMsg( const char * msg, unsigned int level )
 {
     QMutexLocker locker(&mMutex);
     if ( mDoLog && ( mLstLog.size() < mMaxMsg ) && ( mLevel <= level ) ) {
@@ -71,14 +71,14 @@ void TLogMsg::pushMsg( const char * msg, unsigned int level )
     }
 }
 
-int TLogMsg::count()
+int iec104_log::count()
 {
     QMutexLocker locker(&mMutex);
     return int(mLstLog.size());
 }
 
 // Tira mensagem da fila
-std::string TLogMsg::pullMsg()
+std::string iec104_log::pullMsg()
 {
     QMutexLocker locker(&mMutex);
     if ( mLstLog.empty() || !mDoLog )

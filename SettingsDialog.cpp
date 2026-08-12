@@ -40,7 +40,7 @@ void SettingsDialog::accept()
 {
 	store();
 
-	emit settingsChanged();
+	emit signal_settingsChanged();
 
 	QDialog::accept();
 }

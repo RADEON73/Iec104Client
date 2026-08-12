@@ -11,9 +11,10 @@
 #include <qregularexpression.h>
 #include <qthread.h>
 #include "iec104/iec104_class.h"
+#include "iec104/iec104_log.h"
 #include "QIec104.h"
 
-ProtocolController::ProtocolController(QObject *parent) 
+ProtocolController::ProtocolController(QObject *parent)
     : QObject(parent),
     m_i104(new QIec104())
 {
@@ -33,19 +34,14 @@ ProtocolController::~ProtocolController()
     shutdown();
 }
 
-QIec104* ProtocolController::i104()
-{
-    return m_i104;
-}
-
-void ProtocolController::request_GI()
+void ProtocolController::requestGI()
 {
     queueProtocolCall([](QIec104* worker) {
         worker->solicitGI();
         });
 }
 
-void ProtocolController::request_Connect()
+void ProtocolController::requestConnect()
 {
     updateSettings();
 
@@ -59,6 +55,11 @@ void ProtocolController::request_Connect()
             break;
         }
         });
+}
+
+iec104_log* ProtocolController::logQueue()
+{
+    return &m_i104->mLog;
 }
 
 void ProtocolController::shutdown()
@@ -78,7 +79,6 @@ void ProtocolController::shutdown()
     m_protocolThread.wait();
 
     m_i104 = nullptr;
-
 }
 
 void ProtocolController::updateSettings()
@@ -118,7 +118,7 @@ void ProtocolController::slot_reloadProtocolSettings()
     updateSettings();
 }
 
-void ProtocolController::request_SendData(CommandData data)
+void ProtocolController::requestSendData(CommandData data)
 {
 
     auto parseIoa = [](const QString& str) {

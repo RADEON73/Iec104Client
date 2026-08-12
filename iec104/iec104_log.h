@@ -3,13 +3,13 @@
 #include <qmutex.h>
 #include <string>
 
-class TLogMsg
+class iec104_log
 {
 public:
-    TLogMsg();
-    ~TLogMsg();
+    iec104_log();
+    ~iec104_log();
 
-    void pushMsg(const char * msg, unsigned int level=0); // level: 0=less important
+    void pushMsg(const char* msg, unsigned int level=0); // level: 0=less important
     std::string pullMsg();
     void activateLog();
     void deactivateLog();

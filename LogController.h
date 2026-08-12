@@ -4,20 +4,21 @@
 #include <qobjectdefs.h>
 #include <qplaintextedit.h>
 #include <qtimer.h>
-#include "QIec104.h"
+#include "iec104/iec104_log.h"
 
 class LogController : public QObject
 {
 	Q_OBJECT
 
 public:
-	explicit LogController(QPlainTextEdit* log, QIec104* i104, QObject* parent = nullptr);
+	explicit LogController(iec104_log* logQueue, QPlainTextEdit* logUI, QObject* parent = nullptr);
 	~LogController();
 
-	void copyToClipboard();
-	void setLogState(bool state);
-
 	void clear();
+
+	void setLogState(bool state);
+	void copyToClipboard(bool checked = false);
+	void setAutoScrollState(bool state);
 
 signals:
 	void signal_logUpdated();
@@ -26,11 +27,10 @@ private slots:
 	void slot_timerLogmsg(); // timer for log messages
 
 private:
-	QPlainTextEdit* m_log;
-	QIec104* m_i104;
+	iec104_log* m_logQueue;
+	QPlainTextEdit* m_logUI;
 
-	QTimer tmLogMsg; // timer to show log messages
-	bool autoScrollEnabled = true;
-	int logTickCount = 0;
+	bool m_autoScroll;
+	QTimer m_tmLogMsg; // timer to show log messages
 };
 

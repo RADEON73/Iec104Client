@@ -18,7 +18,7 @@ public:
 	~SettingsDialog();
 
 signals:
-	void settingsChanged();
+	void signal_settingsChanged();
 
 public slots:
 	void accept() override;

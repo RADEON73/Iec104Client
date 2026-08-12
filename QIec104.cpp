@@ -70,7 +70,9 @@ void QIec104::dataIndication(iec_obj* obj, unsigned numpoints)
 
 void QIec104::connectTCP()
 {
-    if (m_tcps->state() != QAbstractSocket::UnconnectedState) {
+    auto state = m_tcps->state();
+
+    if (state != QAbstractSocket::UnconnectedState) {
         mLog.pushMsg("TCP соединение не отключено.");
         return;
     }
@@ -96,6 +98,8 @@ void QIec104::connectTCP()
 
 void QIec104::disconnectTCP() 
 { 
+    auto state = m_tcps->state();
+
     m_reconnectEnabled = false;
     m_tcps_reconnect->stop();
     m_tcps->close();

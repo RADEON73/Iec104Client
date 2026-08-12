@@ -5,7 +5,7 @@
 #include <qvector.h>
 #include <string>
 #include "iec104_types.h"
-#include "tLogMsg.h"
+#include "iec104_log.h"
 
 #pragma pack(push)
 #pragma pack(1) // byte aligned structures
@@ -147,7 +147,7 @@ public:
     static const unsigned int SELECT = 1;
     static const unsigned int EXECUTE = 0;
 
-    TLogMsg mLog;
+    iec104_log mLog;
 
     // ---- user called funcions, must be called by the user -----------------
     iec104_class();         // user called constructor on derived class

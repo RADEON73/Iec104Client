@@ -4,8 +4,9 @@
 #include <qobject.h>
 #include <qobjectdefs.h>
 #include <qthread.h>
-#include "iec104/iec104_class.h"
 #include <qvector.h>
+#include "iec104/iec104_class.h"
+#include "iec104/iec104_log.h"
 
 class QIec104;
 
@@ -31,11 +32,11 @@ public:
 	explicit ProtocolController(QObject *parent = nullptr);
 	~ProtocolController();
 
-    QIec104* i104();
+    void requestConnect();
+    void requestGI();
+    void requestSendData(CommandData data);
 
-	void request_GI();
-	void request_Connect();
-    void request_SendData(CommandData data);
+    iec104_log* logQueue();
 
     void shutdown();
 
@@ -45,6 +46,7 @@ signals:
     void signal_dataIndication(const QVector<iec_obj>& objects);
 
 public slots:
+
     void slot_reloadProtocolSettings();
 
 private:
@@ -54,6 +56,7 @@ private:
 
 private:
     QIec104* m_i104 = nullptr;
+
     QThread m_protocolThread;
 };
 

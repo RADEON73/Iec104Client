@@ -64,13 +64,16 @@ public:
 
     void set888Mode(bool arg);
     bool processDataIndicationBatch(const QVector<iec_obj>& objects);
-    void copyToClipboard() const;
+
     QString formatAddress(int address) const;
+
+    void copyToClipboard() const;
 
 signals:
     void tableContentChanged();
 
 public slots:
+
     void slot_commandActRespIndication(const iec_obj& obj);
     void slot_dataIndication(const QVector<iec_obj>& objects);
 

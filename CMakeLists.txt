@@ -51,8 +51,9 @@ set(SOURCES
     model/TableCell.cpp
     model/TableRow.cpp
     model/TableModel.cpp
+    model/TableProxyModel.cpp
     iec104/iec104_class.cpp
-    iec104/tLogMsg.cpp
+    iec104/iec104_log.cpp
 )
 
 set(HEADERS
@@ -65,10 +66,11 @@ set(HEADERS
     model/TableCell.h
     model/TableRow.h
     model/TableModel.h
+    model/TableProxyModel.h
     iec104/iec104_class.h
     iec104/iec104_types.h
     iec104/iec104.h
-    iec104/tLogMsg.h
+    iec104/iec104_log.h
 )
 
 set(FORMS
