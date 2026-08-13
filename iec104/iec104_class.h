@@ -154,10 +154,10 @@ public:
 
     void solicitGI(); // General Interrogation
     void solicitInterrogation(uint8_t group = 20); // Group interrogation
-    void setSecondaryIP(char* ip);
-    void setSecondaryIP_backup(char* ip);
-    char* getSecondaryIP();
-    char* getSecondaryIP_backup();
+    void setSecondaryIP(const std::string& ip);
+    void setSecondaryIP_backup(const std::string& ip);
+    std::string getSecondaryIP();
+    std::string getSecondaryIP_backup();
     void setSecondaryASDUAddress(int addr);
     void setSecondaryAddress(int addr);
     int getSecondaryAddress();
@@ -167,6 +167,8 @@ public:
     bool sendCommand(iec_obj* obj);   // Command, return false if not send
     int getPortTCP();
     void setPortTCP(unsigned port);
+    int getPortTCP_backup();
+    void setPortTCP_backup(unsigned port);
     void setGIPeriod(unsigned period);
 
     static std::string asduTiStr(int ti);
@@ -194,9 +196,10 @@ private:
     unsigned char masterAddress; // master link address (primary address, originator address, oa)
     unsigned short slaveAddress; // slave link address (secondary address, common address of ASDU, ca)
     unsigned short slaveASDUAddrCmd; // common address of ASDU, ca for commands
-    unsigned Port;                   // iec104 tcp port (defaults to 2404)
-    char slaveIP[21];                // slave (secondary, main RTU) IP address
-    char slaveIP_backup[21];         // slave (secondary, backup RTU) IP address
+    unsigned int Port = 2404;                   // iec104 tcp port (main RTU defaults to 2404)
+    unsigned int Port_backup = 2404;            // iec104 tcp port (backup RTU defaults to 2404)
+    std::string slaveIP;                // slave (secondary, main RTU) IP address
+    std::string slaveIP_backup;         // slave (secondary, backup RTU) IP address
     static const int t3_testfr = 10;
     static const int t2_supervisory = 8;
     static const int t1_startdtact = 6;

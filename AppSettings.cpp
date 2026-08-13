@@ -19,8 +19,10 @@ void AppSettings::load()
     m_regSettings->beginGroup("IEC104");
 
     IpAddress = m_regSettings->value("IP_ADDRESS", "127.0.0.1").toString();
-    IpAddressReserve = m_regSettings->value("IP_ADDRESS_RESERVE", "0.0.0.0").toString();
     TcpPort = m_regSettings->value("TCP_PORT", 2404).toUInt();
+
+    IpAddressReserve = m_regSettings->value("IP_ADDRESS_RESERVE", "0.0.0.0").toString();
+    TcpPortReserve = m_regSettings->value("TCP_PORT_RESERVE", 2404).toUInt();
 
     CA = m_regSettings->value("CA", 1).toInt();
     OA = m_regSettings->value("OA", 1).toInt();
@@ -35,8 +37,10 @@ void AppSettings::store()
     m_regSettings->beginGroup("IEC104");
 
     m_regSettings->setValue("IP_ADDRESS", IpAddress);
-    m_regSettings->setValue("IP_ADDRESS_RESERVE", IpAddressReserve);
     m_regSettings->setValue("TCP_PORT", TcpPort);
+
+    m_regSettings->setValue("IP_ADDRESS_RESERVE", IpAddressReserve);
+    m_regSettings->setValue("TCP_PORT_RESERVE", TcpPortReserve);
 
     m_regSettings->setValue("CA", CA);
     m_regSettings->setValue("OA", OA);

@@ -8,6 +8,7 @@
 #include <qtimer.h>
 #include <qvector.h>
 #include "iec104/iec104_types.h"
+#include <string>
 
 class QIec104 : public QObject, public iec104_class
 {
@@ -60,7 +61,6 @@ private: // redefine for iec104_class
     void commandActRespIndication(iec_obj* obj) final;
     void userprocAPDU(iec_apdu* papdu, int sz) final {}
 
-    const char* currentServerIP();
     bool hasBackupServer();
 
 private:

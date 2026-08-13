@@ -87,16 +87,19 @@ void QIec104::connectTCP()
 
     QString msg;
     if (!m_shutdownRequested) {
-        const char* ipAddr = nullptr;
+        QString ipAddr;
+        unsigned int port = 0;
         if (m_currentServer == Server::Primary) {
-            ipAddr = getSecondaryIP();
+            ipAddr = QString::fromStdString(getSecondaryIP());
+            port = getPortTCP();
             msg = QString("Попытка подключения к основному серверу: %1").arg(ipAddr);
         }
         else {
-            ipAddr = getSecondaryIP_backup();
+            ipAddr = QString::fromStdString(getSecondaryIP_backup());
+            port = getPortTCP_backup();
             msg = QString("Попытка подключения к резервному серверу: %1").arg(ipAddr);
         }
-        m_tcps->connectToHost(ipAddr, quint16(getPortTCP()), QIODevice::ReadWrite);
+        m_tcps->connectToHost(ipAddr, quint16(port), QIODevice::ReadWrite);
         mLog.pushMsg(msg.toStdString(), 2);
     }
 }
@@ -240,17 +243,9 @@ int QIec104::bytesAvailableTCP()
     return int(m_tcps->bytesAvailable());
 }
 
-const char* QIec104::currentServerIP()
-{
-    if (m_currentServer == Server::Primary)
-        return getSecondaryIP();
-
-    return getSecondaryIP_backup();
-}
-
 bool QIec104::hasBackupServer()
 {
-    return strcmp(getSecondaryIP_backup(), "0.0.0.0") != 0;
+    return getSecondaryIP_backup() != "0.0.0.0";
 }
 
 void QIec104::slot_checkPrimary()
@@ -267,10 +262,7 @@ void QIec104::slot_checkPrimary()
     if (m_primaryProbe->state() != QAbstractSocket::UnconnectedState)
         return;
 
-    const char* primaryIP = getSecondaryIP();
-
-    if (primaryIP == nullptr || primaryIP[0] == '\0')
-        return;
+    QString primaryIP = QString::fromStdString(getSecondaryIP());
 
     mLog.pushMsg(QString("Проверка доступности основного сервера: %1").arg(primaryIP).toStdString(), 2);
 

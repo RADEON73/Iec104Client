@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>406</width>
-    <height>197</height>
+    <width>434</width>
+    <height>203</height>
    </rect>
   </property>
   <property name="focusPolicy">
@@ -20,55 +20,95 @@
    <string>Настройки подключения</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="0">
-    <widget class="QLabel" name="label_2">
-     <property name="text">
-      <string>Ip-адрес:</string>
-     </property>
-    </widget>
-   </item>
-   <item row="4" column="0">
-    <widget class="QLabel" name="label_4">
-     <property name="text">
-      <string>Адрес отправителя (OA):</string>
-     </property>
-    </widget>
-   </item>
-   <item row="5" column="1" colspan="2">
-    <widget class="QSpinBox" name="GIperiod">
-     <property name="maximum">
-      <number>600</number>
-     </property>
-     <property name="value">
-      <number>330</number>
-     </property>
-    </widget>
-   </item>
-   <item row="6" column="0" colspan="3">
+   <item row="7" column="0" colspan="3">
     <widget class="QDialogButtonBox" name="buttonBox">
      <property name="standardButtons">
       <set>QDialogButtonBox::Cancel|QDialogButtonBox::Reset|QDialogButtonBox::Save</set>
      </property>
     </widget>
    </item>
-   <item row="1" column="1" colspan="2">
-    <widget class="QLineEdit" name="IpAddressReserve">
+   <item row="4" column="0">
+    <widget class="QLabel" name="label_3">
      <property name="text">
-      <string/>
-     </property>
-     <property name="placeholderText">
-      <string>0.0.0.0</string>
+      <string>Адрес АСДУ (CA):</string>
      </property>
     </widget>
    </item>
-   <item row="5" column="0">
-    <widget class="QLabel" name="label_5">
-     <property name="text">
-      <string>Общий опрос, сек.</string>
+   <item row="5" column="1" colspan="2">
+    <widget class="QSpinBox" name="OA">
+     <property name="maximum">
+      <number>255</number>
+     </property>
+     <property name="value">
+      <number>1</number>
      </property>
     </widget>
    </item>
-   <item row="3" column="1" colspan="2">
+   <item row="2" column="0" colspan="3">
+    <widget class="QGroupBox" name="gb_reserveServer">
+     <property name="title">
+      <string>Резервный сервер [0.0.0.0 - Не используется]</string>
+     </property>
+     <property name="checkable">
+      <bool>false</bool>
+     </property>
+     <property name="checked">
+      <bool>false</bool>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_2">
+      <property name="leftMargin">
+       <number>2</number>
+      </property>
+      <property name="topMargin">
+       <number>2</number>
+      </property>
+      <property name="rightMargin">
+       <number>2</number>
+      </property>
+      <property name="bottomMargin">
+       <number>2</number>
+      </property>
+      <property name="spacing">
+       <number>2</number>
+      </property>
+      <item row="0" column="3">
+       <widget class="QSpinBox" name="TcpPortReserve">
+        <property name="maximum">
+         <number>65535</number>
+        </property>
+        <property name="value">
+         <number>2404</number>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_11">
+        <property name="text">
+         <string>Ip-адрес:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QLineEdit" name="IpAddressReserve">
+        <property name="text">
+         <string/>
+        </property>
+        <property name="placeholderText">
+         <string>0.0.0.0</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2">
+       <widget class="QLabel" name="label_10">
+        <property name="text">
+         <string>Порт:</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="4" column="1" colspan="2">
     <widget class="QSpinBox" name="CA">
      <property name="maximum">
       <number>65535</number>
@@ -78,55 +118,86 @@
      </property>
     </widget>
    </item>
-   <item row="3" column="0">
-    <widget class="QLabel" name="label_3">
+   <item row="6" column="0">
+    <widget class="QLabel" name="label_5">
      <property name="text">
-      <string>Адрес АСДУ (CA):</string>
+      <string>Общий опрос, сек.</string>
      </property>
     </widget>
    </item>
-   <item row="2" column="0">
-    <widget class="QLabel" name="label_9">
+   <item row="5" column="0">
+    <widget class="QLabel" name="label_4">
      <property name="text">
-      <string>Порт:</string>
+      <string>Адрес отправителя (OA):</string>
      </property>
     </widget>
    </item>
-   <item row="2" column="1" colspan="2">
-    <widget class="QSpinBox" name="TcpPort">
+   <item row="6" column="1" colspan="2">
+    <widget class="QSpinBox" name="GIperiod">
      <property name="maximum">
-      <number>65535</number>
+      <number>600</number>
      </property>
      <property name="value">
-      <number>2404</number>
+      <number>330</number>
      </property>
     </widget>
    </item>
-   <item row="0" column="1" colspan="2">
-    <widget class="QLineEdit" name="IpAddress">
-     <property name="text">
-      <string/>
+   <item row="0" column="0" colspan="3">
+    <widget class="QGroupBox" name="gb_mainServer">
+     <property name="title">
+      <string>Основной сервер</string>
      </property>
-     <property name="placeholderText">
-      <string>127.0.0.1</string>
-     </property>
-    </widget>
-   </item>
-   <item row="1" column="0">
-    <widget class="QLabel" name="label_11">
-     <property name="text">
-      <string>Ip-адрес (резервный):</string>
-     </property>
-    </widget>
-   </item>
-   <item row="4" column="1" colspan="2">
-    <widget class="QSpinBox" name="OA">
-     <property name="maximum">
-      <number>255</number>
-     </property>
-     <property name="value">
-      <number>1</number>
-     </property>
+     <layout class="QGridLayout" name="gridLayout_3">
+      <property name="leftMargin">
+       <number>2</number>
+      </property>
+      <property name="topMargin">
+       <number>2</number>
+      </property>
+      <property name="rightMargin">
+       <number>2</number>
+      </property>
+      <property name="bottomMargin">
+       <number>2</number>
+      </property>
+      <property name="spacing">
+       <number>2</number>
+      </property>
+      <item row="0" column="1">
+       <widget class="QLineEdit" name="IpAddress">
+        <property name="text">
+         <string/>
+        </property>
+        <property name="placeholderText">
+         <string>127.0.0.1</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="3">
+       <widget class="QSpinBox" name="TcpPort">
+        <property name="maximum">
+         <number>65535</number>
+        </property>
+        <property name="value">
+         <number>2404</number>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>Ip-адрес:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2">
+       <widget class="QLabel" name="label_9">
+        <property name="text">
+         <string>Порт:</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </widget>
    </item>
   </layout>

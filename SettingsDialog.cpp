@@ -57,8 +57,10 @@ void SettingsDialog::load()
 	s.load();
 
 	ui->IpAddress->setText(s.IpAddress);
-	ui->IpAddressReserve->setText(s.IpAddressReserve);
 	ui->TcpPort->setValue(s.TcpPort);
+
+	ui->IpAddressReserve->setText(s.IpAddressReserve);
+	ui->TcpPortReserve->setValue(s.TcpPortReserve);
 
 	ui->CA->setValue(s.CA);
 	ui->OA->setValue(s.OA);
@@ -71,8 +73,10 @@ void SettingsDialog::store()
 	auto& s = AppSettings::instance();
 
 	s.IpAddress = ui->IpAddress->text();
-	s.IpAddressReserve = ui->IpAddressReserve->text();
 	s.TcpPort = ui->TcpPort->value();
+
+	s.IpAddressReserve = ui->IpAddressReserve->text();
+	s.TcpPortReserve = ui->TcpPortReserve->value();
 
 	s.CA = ui->CA->value();
 	s.OA = ui->OA->value();

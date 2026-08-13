@@ -15,9 +15,6 @@ std::map<int, std::string> iec104_class::mapCauseStr;
 
 iec104_class::iec104_class()
 {
-    memset(slaveIP, 0, sizeof(slaveIP));
-    memset(slaveIP_backup, 0, sizeof(slaveIP_backup));
-
     mapTiStr[0] = "M_UNDEF";
     mapTiStr[1] = "M_SP_NA_1";
     mapTiStr[2] = "M_SP_TA_1";
@@ -135,8 +132,6 @@ iec104_class::iec104_class()
     mapCauseStr[46] = "UNKNOWN_ASDU_ADDR";
     mapCauseStr[47] = "UNKNOWN_OBJ_ADDR";
 
-    Port = 2404;
-
     msg_supervisory = true;
     seq_order_check = true;
     connectedTCP = false;
@@ -187,7 +182,7 @@ void iec104_class::disableSequenceOrderCheck()
 
 int iec104_class::getPortTCP()
 {
-    return int(Port);
+    return Port;
 }
 
 void iec104_class::setGIPeriod(unsigned period)
@@ -200,24 +195,32 @@ void iec104_class::setPortTCP(unsigned port)
     Port = port;
 }
 
-void iec104_class::setSecondaryIP(char* ip)
+int iec104_class::getPortTCP_backup()
 {
-    strncpy(slaveIP, ip, sizeof(slaveIP) - 1);
-    slaveIP[sizeof(slaveIP) - 1] = '\0';
+    return Port_backup;
 }
 
-void iec104_class::setSecondaryIP_backup(char* ip)
+void iec104_class::setPortTCP_backup(unsigned port)
 {
-    strncpy(slaveIP_backup, ip, sizeof(slaveIP_backup) - 1);
-    slaveIP_backup[sizeof(slaveIP_backup) - 1] = '\0';
+    Port_backup = port;
 }
 
-char* iec104_class::getSecondaryIP()
+void iec104_class::setSecondaryIP(const std::string& ip)
+{
+    slaveIP = ip;
+}
+
+void iec104_class::setSecondaryIP_backup(const std::string& ip)
+{
+    slaveIP_backup = ip;
+}
+
+std::string iec104_class::getSecondaryIP()
 {
     return slaveIP;
 }
 
-char* iec104_class::getSecondaryIP_backup()
+std::string iec104_class::getSecondaryIP_backup()
 {
     return slaveIP_backup;
 }

@@ -27,8 +27,10 @@ public:
 	QString VERSION = "v1.0.0";
 
 	QString IpAddress;
-	QString IpAddressReserve;
 	unsigned int TcpPort;
+
+	QString IpAddressReserve;
+	unsigned int TcpPortReserve;
 
 	int CA; //Адрес удаленной станции (СA) - Common Address of ASDU
 	int OA; //Адрес отправителя (OA) - Originator Address
