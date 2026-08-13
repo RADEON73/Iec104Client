@@ -223,5 +223,5 @@ void MainWindow::on_pb_LogCopy_clicked()
 void MainWindow::on_cb_LogTraffic_toggled(bool on)
 {
     if (m_logController)
-        m_logController->setTrafficLogState(on);
+        m_logController->setLogLevel(on);
 }

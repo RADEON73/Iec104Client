@@ -1,33 +1,40 @@
 #pragma once
-#include <list>
-#include <qmutex.h>
+#include <mutex>
+#include <queue>
 #include <string>
 
 class iec104_log
 {
 public:
+    struct LogMessage
+    {
+        std::string text;
+        time_t time;
+    };
+
     iec104_log();
     ~iec104_log();
 
-    void pushMsg(const char* msg, unsigned int level=0); // level: 0=less important
+    void pushMsg(const std::string& msg, size_t logLevel = 0);
     std::string pullMsg();
+
     void activateLog();
     void deactivateLog();
-    void doLogTime();
-    void dontLogTime();
-    void setMaxMsg(unsigned int maxmsg);
-    bool haveMsg();
-    void setLevel(unsigned int nivel); // set exibition level
+
+    void setLogLevel(size_t logLevel);
+
+    bool isEmpty();
+    bool isNotEmpty();
+
     bool isLogging();
-    int count();
+
+    size_t size();
 
 private:
-    std::list <std::string> mLstLog;
-    std::list <time_t> mLstTime;
-    mutable QMutex mMutex;
-    unsigned int mMaxMsg = 1000;
-    bool mDoLog = true;
-    bool mRegTime = false;
-    time_t mLastTime = 0; // time of the previously pulled message
-    unsigned int mLevel = 0; // exibition level 0=all, 1 an on, exibit more information progressively
+    std::mutex m_mutex;
+    std::queue<LogMessage> m_logQueue;
+
+    bool m_logOn = true;
+    size_t m_logLevel = 0;
+    time_t m_lastTime = 0;
 };

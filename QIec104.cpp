@@ -11,6 +11,7 @@
 #include <qvector.h>
 #include <string>
 #include "iec104/iec104_class.h"
+#include "iec104/iec104_log.h"
 
 QIec104::QIec104(QObject* parent) 
     : QObject(parent),
@@ -21,7 +22,6 @@ QIec104::QIec104(QObject* parent)
     m_primaryProbe(new QTcpSocket(this))
 {
     mLog.activateLog();
-    mLog.doLogTime();
 
     connect(m_tmKeepAlive, &QTimer::timeout, this, &QIec104::slot_keep_alive);
 
@@ -64,13 +64,6 @@ void QIec104::waitBytes(int bytes, int msTout)
 
 void QIec104::dataIndication(iec_obj* obj, unsigned numpoints)
 {
-    mLog.pushMsg(
-        QString("DATA INDICATION: server=%1, points=%2")
-        .arg(m_currentServer == Server::Primary ? "PRIMARY" : "BACKUP")
-        .arg(numpoints)
-        .toUtf8()
-        .constData());
-
     QVector<iec_obj> objects;
     objects.reserve(static_cast<qsizetype>(numpoints));
     for (unsigned i = 0; i < numpoints; ++i) {
@@ -84,7 +77,7 @@ void QIec104::connectTCP()
     auto state = m_tcps->state();
 
     if (state != QAbstractSocket::UnconnectedState) {
-        mLog.pushMsg("TCP соединение не отключено.");
+        mLog.pushMsg("TCP соединение не отключено.", 2);
         return;
     }
 
@@ -92,15 +85,19 @@ void QIec104::connectTCP()
 
     m_tcps->abort();
 
+    QString msg;
     if (!m_shutdownRequested) {
         const char* ipAddr = nullptr;
-        if (m_currentServer == Server::Primary)
+        if (m_currentServer == Server::Primary) {
             ipAddr = getSecondaryIP();
-        else
+            msg = QString("Попытка подключения к основному серверу: %1").arg(ipAddr);
+        }
+        else {
             ipAddr = getSecondaryIP_backup();
+            msg = QString("Попытка подключения к резервному серверу: %1").arg(ipAddr);
+        }
         m_tcps->connectToHost(ipAddr, quint16(getPortTCP()), QIODevice::ReadWrite);
-        auto msg = QString("Попытка подключения к IP: %1").arg(ipAddr);
-        mLog.pushMsg(msg.toUtf8().constData());
+        mLog.pushMsg(msg.toStdString(), 2);
     }
 }
 
@@ -120,20 +117,15 @@ QAbstractSocket::SocketState QIec104::connectionState() const
 
 void QIec104::slot_tcperror(QAbstractSocket::SocketError socketError)
 {
-    if (socketError != QAbstractSocket::SocketTimeoutError) {
-        auto msg = QString("Ошибка сокета: %1").arg(socketError);
-        mLog.pushMsg(msg.toUtf8().constData());
-    }
-    else {
-        mLog.pushMsg(m_tcps->errorString().toStdString().c_str());
-    }
+    QString err = QString("Ошибка сокета: %1 [%2]").arg(socketError).arg(m_tcps->errorString());
+    mLog.pushMsg(err.toStdString(), 2);
 
     m_tmKeepAlive->stop();
 
     if (!m_shutdownRequested && m_reconnectEnabled) {
         if (m_currentServer == Server::Primary && hasBackupServer()) {
             m_currentServer = Server::Backup;
-            mLog.pushMsg("Основной сервер недоступен. Переключение на резервный сервер.");
+            mLog.pushMsg("Основной сервер недоступен. Переключение на резервный сервер.", 2);
             m_primaryCheckTimer->start();
         }
         m_tcps_reconnect->start();
@@ -162,8 +154,7 @@ void QIec104::sendTCP(char* data, int sz)
         if (!m_shutdownRequested) {
             m_tcps->write(data, sz);
             m_tcps->flush();
-            if (mLog.isLogging())
-                LogFrame(data, sz, true);
+            LogFrame(data, sz, true);
         }
 }
 
@@ -171,14 +162,15 @@ void QIec104::slot_tcpconnect()
 {
     m_tmKeepAlive->start(1000);
     m_tcps_reconnect->stop();
-    mLog.pushMsg("TCP соединение установлено.");
+    mLog.pushMsg("TCP соединение установлено", 2);
 
     onConnectTCP();
 }
 
 void QIec104::slot_tcpdisconnect()
 {
-    mLog.pushMsg("TCP соединение разорвано.");
+    if (!m_switchToPrimary)
+        mLog.pushMsg("TCP соединение разорвано", 2);
 
     m_tmKeepAlive->stop();
 
@@ -194,18 +186,14 @@ void QIec104::slot_tcpdisconnect()
     // Backup -> Primary
     if (m_switchToPrimary) {
         m_switchToPrimary = false;
-
-        mLog.pushMsg(
-            "Старое соединение закрыто. "
-            "Подключение к основному серверу.");
-
+        mLog.pushMsg("Старое соединение закрыто. Подключение к основному серверу", 2);
         connectTCP();
         return;
     }
 
     if (m_currentServer == Server::Primary && hasBackupServer()) {
         m_currentServer = Server::Backup;
-        mLog.pushMsg("Основной сервер недоступен. Переключение на резервный сервер.");
+        mLog.pushMsg("Основной сервер недоступен. Переключение на резервный сервер", 2);
         m_primaryCheckTimer->start();
     }
 
@@ -218,7 +206,7 @@ void QIec104::slot_reconnect()
         return;
 
     if (m_tcps->state() == QAbstractSocket::UnconnectedState) {
-        mLog.pushMsg("!!!!!Выполняется попытка переподключения...!");
+        //mLog.pushMsg("!!!!!Выполняется попытка переподключения...!", 2);
         connectTCP();
     }
 }
@@ -236,7 +224,7 @@ void QIec104::terminate()
     m_tmKeepAlive->stop();
     m_primaryProbe->abort();
     m_tcps->abort();
-    mLog.pushMsg("!!!!!Работа прервана...!");
+    mLog.pushMsg("!!!!!Работа прервана...!", 2);
 }
 
 void QIec104::slot_tcpReadyRead()
@@ -284,10 +272,7 @@ void QIec104::slot_checkPrimary()
     if (primaryIP == nullptr || primaryIP[0] == '\0')
         return;
 
-    mLog.pushMsg(QString("Проверка доступности основного сервера: %1")
-        .arg(primaryIP)
-        .toUtf8()
-        .constData());
+    mLog.pushMsg(QString("Проверка доступности основного сервера: %1").arg(primaryIP).toStdString(), 2);
 
     m_primaryProbe->abort();
 
@@ -297,7 +282,7 @@ void QIec104::slot_checkPrimary()
 
 void QIec104::slot_primaryProbeConnected()
 {
-    mLog.pushMsg("Основной сервер снова доступен.");
+    mLog.pushMsg("Основной сервер снова доступен.", 2);
 
     m_primaryProbe->abort();
 
@@ -314,7 +299,7 @@ void QIec104::slot_primaryProbeConnected()
     m_primaryCheckTimer->stop();
     m_tcps_reconnect->stop();
 
-    mLog.pushMsg("Переключение рабочего соединения на основной сервер.");
+    mLog.pushMsg("Переключение рабочего соединения на основной сервер.", 2);
 
     m_tcps->abort();
 }
@@ -323,5 +308,5 @@ void QIec104::slot_primaryProbeError(QAbstractSocket::SocketError socketError)
 {
     Q_UNUSED(socketError);
     m_primaryProbe->abort();
-    mLog.pushMsg("Основной сервер не доступен...");
+    mLog.pushMsg("Основной сервер не доступен...", 2);
 }

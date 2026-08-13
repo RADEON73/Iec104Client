@@ -7,6 +7,9 @@
 #include "iec104/iec104_class.h"
 #include "MainWindow.h"
 
+Q_DECLARE_METATYPE(iec_obj)
+Q_DECLARE_METATYPE(QVector<iec_obj>)
+
 int main(int argc, char* argv[])
 {
     QApplication a(argc, argv);

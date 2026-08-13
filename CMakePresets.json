@@ -1,0 +1,525 @@
+{
+  "version": 3,
+
+  "configurePresets": [
+
+    {
+      "name": "windows-base",
+      "hidden": true,
+      "generator": "Ninja",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "environment": {
+        "VSLANG": "1033"
+      },
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+
+    {
+      "name": "windows-win7-base",
+      "hidden": true,
+      "generator": "Visual Studio 16 2019",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "toolset": {
+        "value": "v142"
+      },
+      "cacheVariables": {
+        "CMAKE_SYSTEM_VERSION": "10.0"
+      }
+    },
+
+    {
+      "name": "windows-clang",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang-cl.exe",
+        "CMAKE_CXX_COMPILER": "clang-cl.exe",
+        "CMAKE_LINKER": "lld-link.exe"
+      }
+    },
+
+    {
+      "name": "windows-msvc",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "cl.exe",
+        "CMAKE_CXX_COMPILER": "cl.exe",
+        "CMAKE_LINKER": "link.exe",
+        "CMAKE_MSVC_DEBUG_INFORMATION_FORMAT": "Embedded"
+      }
+    },
+
+    {
+      "name": "windows-static",
+      "hidden": true,
+      "cacheVariables": {
+        "USE_STATIC_RUNTIME": "ON"
+      }
+    },
+
+    {
+      "name": "windows-dynamic",
+      "hidden": true,
+      "cacheVariables": {
+        "USE_STATIC_RUNTIME": "OFF"
+      }
+    },
+
+    {
+      "name": "windows-win7-static",
+      "hidden": true,
+      "inherits": "windows-win7-base",
+      "cacheVariables": {
+        "USE_STATIC_RUNTIME": "ON"
+      }
+    },
+
+    {
+      "name": "windows-win7-dynamic",
+      "hidden": true,
+      "inherits": "windows-win7-base",
+      "cacheVariables": {
+        "USE_STATIC_RUNTIME": "OFF"
+      }
+    },
+
+    {
+      "name": "windows-static-clang-debug",
+      "displayName": "Windows Static Debug (/MT) - Clang",
+      "inherits": [
+        "windows-base",
+        "windows-static",
+        "windows-clang"
+      ],
+      "binaryDir": "${sourceDir}/build/clang/static_debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+
+    {
+      "name": "windows-static-clang-release",
+      "displayName": "Windows Static Release (/MT) - Clang",
+      "inherits": [
+        "windows-base",
+        "windows-static",
+        "windows-clang"
+      ],
+      "binaryDir": "${sourceDir}/build/clang/static_release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+
+    {
+      "name": "windows-static-clang-relwithdebinfo",
+      "displayName": "Windows Static RelWithDebInfo (/MT) - Clang",
+      "inherits": [
+        "windows-base",
+        "windows-static",
+        "windows-clang"
+      ],
+      "binaryDir": "${sourceDir}/build/clang/static_relwithdebinfo",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+
+    {
+      "name": "windows-dynamic-clang-debug",
+      "displayName": "Windows Dynamic Debug (/MD) - Clang",
+      "inherits": [
+        "windows-base",
+        "windows-dynamic",
+        "windows-clang"
+      ],
+      "binaryDir": "${sourceDir}/build/clang/dynamic_debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+
+    {
+      "name": "windows-dynamic-clang-release",
+      "displayName": "Windows Dynamic Release (/MD) - Clang",
+      "inherits": [
+        "windows-base",
+        "windows-dynamic",
+        "windows-clang"
+      ],
+      "binaryDir": "${sourceDir}/build/clang/dynamic_release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+
+    {
+      "name": "windows-dynamic-clang-relwithdebinfo",
+      "displayName": "Windows Dynamic RelWithDebInfo (/MD) - Clang",
+      "inherits": [
+        "windows-base",
+        "windows-dynamic",
+        "windows-clang"
+      ],
+      "binaryDir": "${sourceDir}/build/clang/dynamic_relwithdebinfo",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+
+
+    {
+      "name": "windows-static-msvc-debug",
+      "displayName": "Windows Static Debug (/MT) - MSVC",
+      "inherits": [
+        "windows-base",
+        "windows-static",
+        "windows-msvc"
+      ],
+      "binaryDir": "${sourceDir}/build/msvc/static_debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+
+    {
+      "name": "windows-static-msvc-release",
+      "displayName": "Windows Static Release (/MT) - MSVC",
+      "inherits": [
+        "windows-base",
+        "windows-static",
+        "windows-msvc"
+      ],
+      "binaryDir": "${sourceDir}/build/msvc/static_release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+
+    {
+      "name": "windows-static-msvc-relwithdebinfo",
+      "displayName": "Windows Static RelWithDebInfo (/MT) - MSVC",
+      "inherits": [
+        "windows-base",
+        "windows-static",
+        "windows-msvc"
+      ],
+      "binaryDir": "${sourceDir}/build/msvc/static_relwithdebinfo",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+
+    {
+      "name": "windows-dynamic-msvc-debug",
+      "displayName": "Windows Dynamic Debug (/MD) - MSVC",
+      "inherits": [
+        "windows-base",
+        "windows-dynamic",
+        "windows-msvc"
+      ],
+      "binaryDir": "${sourceDir}/build/msvc/dynamic_debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+
+    {
+      "name": "windows-dynamic-msvc-release",
+      "displayName": "Windows Dynamic Release (/MD) - MSVC",
+      "inherits": [
+        "windows-base",
+        "windows-dynamic",
+        "windows-msvc"
+      ],
+      "binaryDir": "${sourceDir}/build/msvc/dynamic_release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+
+    {
+      "name": "windows-dynamic-msvc-relwithdebinfo",
+      "displayName": "Windows Dynamic RelWithDebInfo (/MD) - MSVC",
+      "inherits": [
+        "windows-base",
+        "windows-dynamic",
+        "windows-msvc"
+      ],
+      "binaryDir": "${sourceDir}/build/msvc/dynamic_relwithdebinfo",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+
+    {
+      "name": "windows-win7-static-debug",
+      "displayName": "Windows 7 Static Debug (/MT) - MSVC v142",
+      "inherits": [
+        "windows-win7-static"
+      ],
+      "binaryDir": "${sourceDir}/build/msvc/win7_static_debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+
+    {
+      "name": "windows-win7-static-release",
+      "displayName": "Windows 7 Static Release (/MT) - MSVC v142",
+      "inherits": [
+        "windows-win7-static"
+      ],
+      "binaryDir": "${sourceDir}/build/msvc/win7_static_release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+
+    {
+      "name": "windows-win7-static-relwithdebinfo",
+      "displayName": "Windows 7 Static RelWithDebInfo (/MT) - MSVC v142",
+      "inherits": [
+        "windows-win7-static"
+      ],
+      "binaryDir": "${sourceDir}/build/msvc/win7_static_relwithdebinfo",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+
+    {
+      "name": "windows-win7-dynamic-debug",
+      "displayName": "Windows 7 Dynamic Debug (/MD) - MSVC v142",
+      "inherits": [
+        "windows-win7-dynamic"
+      ],
+      "binaryDir": "${sourceDir}/build/msvc/win7_dynamic_debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+
+    {
+      "name": "windows-win7-dynamic-release",
+      "displayName": "Windows 7 Dynamic Release (/MD) - MSVC v142",
+      "inherits": [
+        "windows-win7-dynamic"
+      ],
+      "binaryDir": "${sourceDir}/build/msvc/win7_dynamic_release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+
+    {
+      "name": "windows-win7-dynamic-relwithdebinfo",
+      "displayName": "Windows 7 Dynamic RelWithDebInfo (/MD) - MSVC v142",
+      "inherits": [
+        "windows-win7-dynamic"
+      ],
+      "binaryDir": "${sourceDir}/build/msvc/win7_dynamic_relwithdebinfo",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+
+
+
+    {
+      "name": "linux-base",
+      "hidden": true,
+      "generator": "Ninja",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+
+    {
+      "name": "linux-debug",
+      "displayName": "Linux Debug - Clang",
+      "inherits": "linux-base",
+      "binaryDir": "${sourceDir}/build/linux/debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+
+    {
+      "name": "linux-release",
+      "displayName": "Linux Release - Clang",
+      "inherits": "linux-base",
+      "binaryDir": "${sourceDir}/build/linux/release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+
+    {
+      "name": "linux-relwithdebinfo",
+      "displayName": "Linux RelWithDebInfo - Clang",
+      "inherits": "linux-base",
+      "binaryDir": "${sourceDir}/build/linux/relwithdebinfo",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    }
+
+  ],
+
+  "buildPresets": [
+
+    {
+      "name": "windows-static-clang-debug",
+      "configurePreset": "windows-static-clang-debug",
+      "configuration": "Debug"
+    },
+
+    {
+      "name": "windows-static-clang-release",
+      "configurePreset": "windows-static-clang-release",
+      "configuration": "Release"
+    },
+
+    {
+      "name": "windows-static-clang-relwithdebinfo",
+      "configurePreset": "windows-static-clang-relwithdebinfo",
+      "configuration": "RelWithDebInfo"
+    },
+
+    {
+      "name": "windows-dynamic-clang-debug",
+      "configurePreset": "windows-dynamic-clang-debug",
+      "configuration": "Debug"
+    },
+
+    {
+      "name": "windows-dynamic-clang-release",
+      "configurePreset": "windows-dynamic-clang-release",
+      "configuration": "Release"
+    },
+
+    {
+      "name": "windows-dynamic-clang-relwithdebinfo",
+      "configurePreset": "windows-dynamic-clang-relwithdebinfo",
+      "configuration": "RelWithDebInfo"
+    },
+
+
+    {
+      "name": "windows-static-msvc-debug",
+      "configurePreset": "windows-static-msvc-debug",
+      "configuration": "Debug"
+    },
+
+    {
+      "name": "windows-static-msvc-release",
+      "configurePreset": "windows-static-msvc-release",
+      "configuration": "Release"
+    },
+
+    {
+      "name": "windows-static-msvc-relwithdebinfo",
+      "configurePreset": "windows-static-msvc-relwithdebinfo",
+      "configuration": "RelWithDebInfo"
+    },
+
+    {
+      "name": "windows-dynamic-msvc-debug",
+      "configurePreset": "windows-dynamic-msvc-debug",
+      "configuration": "Debug"
+    },
+
+    {
+      "name": "windows-dynamic-msvc-release",
+      "configurePreset": "windows-dynamic-msvc-release",
+      "configuration": "Release"
+    },
+
+    {
+      "name": "windows-dynamic-msvc-relwithdebinfo",
+      "configurePreset": "windows-dynamic-msvc-relwithdebinfo",
+      "configuration": "RelWithDebInfo"
+    },
+
+    {
+      "name": "windows-win7-static-debug",
+      "configurePreset": "windows-win7-static-debug",
+      "configuration": "Debug"
+    },
+
+    {
+      "name": "windows-win7-static-release",
+      "configurePreset": "windows-win7-static-release",
+      "configuration": "Release"
+    },
+
+    {
+      "name": "windows-win7-static-relwithdebinfo",
+      "configurePreset": "windows-win7-static-relwithdebinfo",
+      "configuration": "RelWithDebInfo"
+    },
+
+    {
+      "name": "windows-win7-dynamic-debug",
+      "configurePreset": "windows-win7-dynamic-debug",
+      "configuration": "Debug"
+    },
+
+    {
+      "name": "windows-win7-dynamic-release",
+      "configurePreset": "windows-win7-dynamic-release",
+      "configuration": "Release"
+    },
+
+    {
+      "name": "windows-win7-dynamic-relwithdebinfo",
+      "configurePreset": "windows-win7-dynamic-relwithdebinfo",
+      "configuration": "RelWithDebInfo"
+    },
+
+    {
+      "name": "linux-debug",
+      "configurePreset": "linux-debug",
+      "configuration": "Debug"
+    },
+
+    {
+      "name": "linux-release",
+      "configurePreset": "linux-release",
+      "configuration": "Release"
+    },
+
+    {
+      "name": "linux-relwithdebinfo",
+      "configurePreset": "linux-relwithdebinfo",
+      "configuration": "RelWithDebInfo"
+    }
+
+  ]
+}

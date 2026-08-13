@@ -359,7 +359,7 @@ void iec104_class::solicitGI()
     tout_gi = gi_retry_time;
 }
 
-void iec104_class::solicitInterrogation(char group)
+void iec104_class::solicitInterrogation(uint8_t group)
 {
     iec_apdu wapdu;
 
@@ -381,9 +381,7 @@ void iec104_class::solicitInterrogation(char group)
     wapdu.dados[3] = group;
     sendTCP(reinterpret_cast<char*>(&wapdu), 16);
     VS += 2;
-    char buflog[1000];
-    sprintf(buflog, "     INTERROGATION GROUP %d", group);
-    mLog.pushMsg(buflog);
+    mLog.pushMsg(std::string("     INTERROGATION GROUP ") + std::to_string(group));
     tout_gi = gi_retry_time;
 }
 
@@ -449,7 +447,6 @@ void iec104_class::packetReadyTCP()
     int bytesrec;
     unsigned char byt;
     int len;
-    char buflog[10000];
 
     while (true) {
 
@@ -481,29 +478,35 @@ void iec104_class::packetReadyTCP()
         if (bytesrec > 0)
             rxBytes += bytesrec;
         if (rxBytes < len) {
-            sprintf(buflog, "R--> Broken apdu (%d of %d bytes), waiting for the rest...", rxBytes, len);
-            mLog.pushMsg(buflog);
+            mLog.pushMsg(
+                std::string("R--> Broken apdu (") +
+                std::to_string(rxBytes) +
+                " of " +
+                std::to_string(len) +
+                " bytes), waiting for the rest..."
+            );
             broken_msg = true;
             return;
         }
 
-        //if ( rxApdu.asduh.ca != slaveAddress && rxApdu.asduh.ca != slaveASDUAddrCmd && len>4 )
-        //  {
-        //  broken_msg=false;
-        //  mLog.pushMsg("R--> ASDU WITH UNEXPECTED ORIGIN! Ignoring...");
-        //  // continue;
-        //  }
-
         broken_msg = false;
 
         if (mLog.isLogging()) {
-            sprintf(buflog, "R--> %03d: ", len + 2);
-            int lim = 100;
-            for (int i = 0; i < len + 2 && i < lim; i++) { // log up to lim bytes
-                sprintf(buflog + strlen(buflog), "%02x ", br[i]);
+            std::string buflog =
+                "R--> " + std::to_string(len + 2) + ": ";
+
+            constexpr int lim = 100;
+            constexpr char hex[] = "0123456789abcdef";
+
+            for (int i = 0; i < len + 2 && i < lim; ++i) {
+                buflog += hex[(br[i] >> 4) & 0x0F];
+                buflog += hex[br[i] & 0x0F];
+                buflog += ' ';
             }
-            if (len > lim - 2)
-                sprintf(buflog + strlen(buflog), "...");
+
+            if (len + 2 > lim)
+                buflog += "...";
+
             mLog.pushMsg(buflog);
         }
 
@@ -517,22 +520,26 @@ void iec104_class::packetReadyTCP()
 
 void iec104_class::LogFrame(char* frame, int size, bool is_send)
 {
-    char buflog[10000];
-    char* cp = frame;
+    if (!mLog.isLogging())
+        return;
 
-    if (mLog.isLogging()) {
-        if (is_send)
-            sprintf(buflog, "T<-- %03d: ", int(size));
-        else
-            sprintf(buflog, "R--> %03d: ", int(size));
-        int lim = 100;
-        for (int i = 0; i < size && i < lim; i++) { // log up to 50 caracteres
-            sprintf(buflog + strlen(buflog), "%02x ", static_cast<unsigned char>(cp[i]));
-        }
-        if (size > lim)
-            sprintf(buflog + strlen(buflog), "...");
-        mLog.pushMsg(buflog);
+    std::string buflog = (is_send ? "T<-- " : "R--> ") + std::to_string(size) + ": ";
+
+    constexpr int lim = 100;
+    constexpr char hex[] = "0123456789abcdef";
+
+    for (int i = 0; i < size && i < lim; ++i) {
+        const unsigned char byte = static_cast<unsigned char>(frame[i]);
+
+        buflog += hex[(byte >> 4) & 0x0F];
+        buflog += hex[byte & 0x0F];
+        buflog += ' ';
     }
+
+    if (size > lim)
+        buflog += "...";
+
+    mLog.pushMsg(buflog);
 }
 
 char* iec104_class::trim(char* s)
@@ -726,7 +733,7 @@ void iec104_class::parseAPDU(iec_apdu* papdu, int sz, bool accountandrespond)
             << (papdu->asduh.t ? " TEST" : "");
 
 
-        mLog.pushMsg(oss.str().c_str());
+        mLog.pushMsg(oss.str());
 
         // validate that the declared number of objects fits inside the received
         // apdu, avoiding reads beyond the receive buffer on malformed frames
@@ -1890,7 +1897,7 @@ void iec104_class::parseAPDU(iec_apdu* papdu, int sz, bool accountandrespond)
                         << int(pobj->qu)
                         << " SE "
                         << unsigned(pobj->se);
-                    mLog.pushMsg(oss.str().c_str());
+                    mLog.pushMsg(oss.str());
                 }
 
                 // send indication to user
@@ -1931,7 +1938,7 @@ void iec104_class::parseAPDU(iec_apdu* papdu, int sz, bool accountandrespond)
                         << int(pobj->qu)
                         << " SE "
                         << unsigned(pobj->se);
-                    mLog.pushMsg(oss.str().c_str());
+                    mLog.pushMsg(oss.str());
                 }
 
                 // send indication to user
@@ -1972,7 +1979,7 @@ void iec104_class::parseAPDU(iec_apdu* papdu, int sz, bool accountandrespond)
                         << int(pobj->qu)
                         << " SE "
                         << unsigned(pobj->se);
-                    mLog.pushMsg(oss.str().c_str());
+                    mLog.pushMsg(oss.str());
                 }
 
                 // send indication to user
@@ -2013,7 +2020,7 @@ void iec104_class::parseAPDU(iec_apdu* papdu, int sz, bool accountandrespond)
                         << int(pobj->qu)
                         << " SE "
                         << unsigned(pobj->se);
-                    mLog.pushMsg(oss.str().c_str());
+                    mLog.pushMsg(oss.str());
                 }
 
                 // send indication to user
@@ -2054,7 +2061,7 @@ void iec104_class::parseAPDU(iec_apdu* papdu, int sz, bool accountandrespond)
                         << int(pobj->qu)
                         << " SE "
                         << unsigned(pobj->se);
-                    mLog.pushMsg(oss.str().c_str());
+                    mLog.pushMsg(oss.str());
                 }
 
                 // send indication to user
@@ -2095,7 +2102,7 @@ void iec104_class::parseAPDU(iec_apdu* papdu, int sz, bool accountandrespond)
                         << int(pobj->qu)
                         << " SE "
                         << unsigned(pobj->se);
-                    mLog.pushMsg(oss.str().c_str());
+                    mLog.pushMsg(oss.str());
                 }
 
                 // send indication to user
@@ -2136,7 +2143,7 @@ void iec104_class::parseAPDU(iec_apdu* papdu, int sz, bool accountandrespond)
                         << int(pobj->ql)
                         << " SE "
                         << unsigned(pobj->se);
-                    mLog.pushMsg(oss.str().c_str());
+                    mLog.pushMsg(oss.str());
                 }
 
                 // send indication to user
@@ -2177,7 +2184,7 @@ void iec104_class::parseAPDU(iec_apdu* papdu, int sz, bool accountandrespond)
                         << int(pobj->ql)
                         << " SE "
                         << unsigned(pobj->se);
-                    mLog.pushMsg(oss.str().c_str());
+                    mLog.pushMsg(oss.str());
                 }
 
                 // send indication to user
@@ -2218,7 +2225,7 @@ void iec104_class::parseAPDU(iec_apdu* papdu, int sz, bool accountandrespond)
                         << int(pobj->ql)
                         << " SE "
                         << unsigned(pobj->se);
-                    mLog.pushMsg(oss.str().c_str());
+                    mLog.pushMsg(oss.str());
                 }
 
                 // send indication to user
@@ -2259,7 +2266,7 @@ void iec104_class::parseAPDU(iec_apdu* papdu, int sz, bool accountandrespond)
                         << int(pobj->ql)
                         << " SE "
                         << unsigned(pobj->se);
-                    mLog.pushMsg(oss.str().c_str());
+                    mLog.pushMsg(oss.str());
                 }
 
                 // send indication to user
@@ -2301,7 +2308,7 @@ void iec104_class::parseAPDU(iec_apdu* papdu, int sz, bool accountandrespond)
                         << int(pobj->ql)
                         << " SE "
                         << unsigned(pobj->se);
-                    mLog.pushMsg(oss.str().c_str());
+                    mLog.pushMsg(oss.str());
                 }
 
                 // send indication to user
@@ -2342,7 +2349,7 @@ void iec104_class::parseAPDU(iec_apdu* papdu, int sz, bool accountandrespond)
                         << int(pobj->ql)
                         << " SE "
                         << unsigned(pobj->se);
-                    mLog.pushMsg(oss.str().c_str());
+                    mLog.pushMsg(oss.str());
                 }
 
                 // send indication to user
@@ -2374,7 +2381,7 @@ void iec104_class::parseAPDU(iec_apdu* papdu, int sz, bool accountandrespond)
                     oss.str("");
                     oss << "     Total objects in Interrogation: "
                         << GIObjectCnt;
-                    mLog.pushMsg(oss.str().c_str());
+                    mLog.pushMsg(oss.str());
 
                     interrogationActTermIndication();
                 }
@@ -2393,7 +2400,7 @@ void iec104_class::parseAPDU(iec_apdu* papdu, int sz, bool accountandrespond)
                         << unsigned(pobj->time.year) << "year " << unsigned(pobj->time.month) << "month " << unsigned(pobj->time.mday) << "day "
                         << unsigned(pobj->time.hour) << "hour " << unsigned(pobj->time.min) << "min " << unsigned(pobj->time.msec / 1000) << "sec "
                         << unsigned(pobj->time.msec % 1000) << "msec";
-                    mLog.pushMsg(oss.str().c_str());
+                    mLog.pushMsg(oss.str());
                 }
 
                 if (papdu->asduh.cause == ACTIVATION) {
@@ -2417,7 +2424,7 @@ void iec104_class::parseAPDU(iec_apdu* papdu, int sz, bool accountandrespond)
                     oss << "READ COMMAND ADDRESS "
                         << unsigned(papdu->asdu102.ioa16) + (unsigned(papdu->asdu102.ioa8) << 16);
 
-                    mLog.pushMsg(oss.str().c_str());
+                    mLog.pushMsg(oss.str());
                 }
 
                 // send indication to user
@@ -2443,7 +2450,7 @@ void iec104_class::parseAPDU(iec_apdu* papdu, int sz, bool accountandrespond)
                         << pobj->frz
                         << " RQT "
                         << int(pobj->rqt);
-                    mLog.pushMsg(oss.str().c_str());
+                    mLog.pushMsg(oss.str());
                 }
             }
             break;
@@ -2457,7 +2464,7 @@ void iec104_class::parseAPDU(iec_apdu* papdu, int sz, bool accountandrespond)
                         << unsigned(pobj->time.year) << "year " << unsigned(pobj->time.month) << "month " << unsigned(pobj->time.mday) << "day "
                         << unsigned(pobj->time.hour) << "hour " << unsigned(pobj->time.min) << "min " << unsigned(pobj->time.msec / 1000) << "sec "
                         << unsigned(pobj->time.msec % 1000) << "msec";
-                    mLog.pushMsg(oss.str().c_str());
+                    mLog.pushMsg(oss.str());
                 }
             }
             break;
@@ -2487,7 +2494,7 @@ void iec104_class::parseAPDU(iec_apdu* papdu, int sz, bool accountandrespond)
                         << unsigned(pobj->lpc)
                         << " POP "
                         << unsigned(pobj->pop);
-                    mLog.pushMsg(oss.str().c_str());
+                    mLog.pushMsg(oss.str());
                 }
 
                 // send indication to user
@@ -2533,7 +2540,7 @@ void iec104_class::parseAPDU(iec_apdu* papdu, int sz, bool accountandrespond)
                         << unsigned(pobj->lpc)
                         << " POP "
                         << unsigned(pobj->pop);
-                    mLog.pushMsg(oss.str().c_str());
+                    mLog.pushMsg(oss.str());
                 }
 
                 // send indication to user
@@ -2579,7 +2586,7 @@ void iec104_class::parseAPDU(iec_apdu* papdu, int sz, bool accountandrespond)
                         << unsigned(pobj->lpc)
                         << " POP "
                         << unsigned(pobj->pop);
-                    mLog.pushMsg(oss.str().c_str());
+                    mLog.pushMsg(oss.str());
                 }
 
                 // send indication to user
@@ -2619,7 +2626,7 @@ void iec104_class::parseAPDU(iec_apdu* papdu, int sz, bool accountandrespond)
                         << unsigned(papdu->nsq113.ioa16) + (unsigned(papdu->nsq113.ioa8) << 16)
                         << " QPA "
                         << unsigned(pobj->qpa);
-                    mLog.pushMsg(oss.str().c_str());
+                    mLog.pushMsg(oss.str());
                 }
 
                 // send indication to user
@@ -2679,7 +2686,7 @@ void iec104_class::sendSupervisory()
     oss.str("");
     oss.setf(std::ios::hex, std::ios::basefield);
     oss << "     SUPERVISORY " << VR;
-    mLog.pushMsg(oss.str().c_str());
+    mLog.pushMsg(oss.str());
 }
 
 bool iec104_class::sendCommand(iec_obj* obj)
@@ -2729,7 +2736,7 @@ bool iec104_class::sendCommand(iec_obj* obj)
                 << unsigned(obj->qu)
                 << " SE "
                 << unsigned(obj->se);
-            mLog.pushMsg(oss.str().c_str());
+            mLog.pushMsg(oss.str());
         }
 
         break;
@@ -2765,7 +2772,7 @@ bool iec104_class::sendCommand(iec_obj* obj)
             << unsigned(obj->qu)
             << " SE "
             << unsigned(obj->se);
-        mLog.pushMsg(oss.str().c_str());
+        mLog.pushMsg(oss.str());
         break;
     case C_RC_NA_1:
         apducmd.start = START;
@@ -2798,7 +2805,7 @@ bool iec104_class::sendCommand(iec_obj* obj)
             << unsigned(obj->qu)
             << " SE "
             << unsigned(obj->se);
-        mLog.pushMsg(oss.str().c_str());
+        mLog.pushMsg(oss.str());
         break;
     case C_SC_TA_1:
         apducmd.start = START;
@@ -2846,7 +2853,7 @@ bool iec104_class::sendCommand(iec_obj* obj)
             << unsigned(obj->qu)
             << " SE "
             << unsigned(obj->se);
-        mLog.pushMsg(oss.str().c_str());
+        mLog.pushMsg(oss.str());
         break;
     case C_DC_TA_1:
         apducmd.start = START;
@@ -2893,7 +2900,7 @@ bool iec104_class::sendCommand(iec_obj* obj)
             << unsigned(obj->qu)
             << " SE "
             << unsigned(obj->se);
-        mLog.pushMsg(oss.str().c_str());
+        mLog.pushMsg(oss.str());
         break;
     case C_RC_TA_1:
         apducmd.start = START;
@@ -2939,7 +2946,7 @@ bool iec104_class::sendCommand(iec_obj* obj)
             << unsigned(obj->qu)
             << " SE "
             << unsigned(obj->se);
-        mLog.pushMsg(oss.str().c_str());
+        mLog.pushMsg(oss.str());
         break;
     case C_SE_NA_1:
         apducmd.start = START;
@@ -2971,7 +2978,7 @@ bool iec104_class::sendCommand(iec_obj* obj)
             << obj->ca
             << " SE "
             << unsigned(obj->se);
-        mLog.pushMsg(oss.str().c_str());
+        mLog.pushMsg(oss.str());
         break;
     case C_SE_TA_1:
         apducmd.start = START;
@@ -3016,7 +3023,7 @@ bool iec104_class::sendCommand(iec_obj* obj)
             << obj->ca
             << " SE "
             << unsigned(obj->se);
-        mLog.pushMsg(oss.str().c_str());
+        mLog.pushMsg(oss.str());
         break;
     case C_SE_NB_1:
         apducmd.start = START;
@@ -3048,7 +3055,7 @@ bool iec104_class::sendCommand(iec_obj* obj)
             << obj->ca
             << " SE "
             << unsigned(obj->se);
-        mLog.pushMsg(oss.str().c_str());
+        mLog.pushMsg(oss.str());
         break;
     case C_SE_TB_1:
         apducmd.start = START;
@@ -3093,7 +3100,7 @@ bool iec104_class::sendCommand(iec_obj* obj)
             << obj->ca
             << " SE "
             << unsigned(obj->se);
-        mLog.pushMsg(oss.str().c_str());
+        mLog.pushMsg(oss.str());
         break;
     case C_SE_NC_1:
         apducmd.start = START;
@@ -3125,7 +3132,7 @@ bool iec104_class::sendCommand(iec_obj* obj)
             << obj->ca
             << " SE "
             << unsigned(obj->se);
-        mLog.pushMsg(oss.str().c_str());
+        mLog.pushMsg(oss.str());
         break;
     case C_SE_TC_1:
         apducmd.start = START;
@@ -3170,7 +3177,7 @@ bool iec104_class::sendCommand(iec_obj* obj)
             << obj->ca
             << " SE "
             << unsigned(obj->se);
-        mLog.pushMsg(oss.str().c_str());
+        mLog.pushMsg(oss.str());
         break;
     case C_CS_NA_1: // Clock Sync
         apducmd.start = START;
@@ -3198,7 +3205,7 @@ bool iec104_class::sendCommand(iec_obj* obj)
             << unsigned(obj->timetag.year) << "year " << unsigned(obj->timetag.month) << "month " << unsigned(obj->timetag.mday) << "day "
             << unsigned(obj->timetag.hour) << "hour " << unsigned(obj->timetag.min) << "min " << unsigned(obj->timetag.msec / 1000) << "sec "
             << unsigned(obj->timetag.msec % 1000) << "msec";
-        mLog.pushMsg(oss.str().c_str());
+        mLog.pushMsg(oss.str());
         break;
     case C_RP_NA_1: // reset process command
         apducmd.start = START;
@@ -3224,7 +3231,7 @@ bool iec104_class::sendCommand(iec_obj* obj)
         oss << "     RESET PROCESS COMMAND"
             << " QRP "
             << unsigned(apducmd.dados[3]);
-        mLog.pushMsg(oss.str().c_str());
+        mLog.pushMsg(oss.str());
         break;
     case C_TS_TA_1: // test command with time tag
         apducmd.start = START;
@@ -3254,7 +3261,7 @@ bool iec104_class::sendCommand(iec_obj* obj)
             << unsigned(obj->timetag.year) << "year " << unsigned(obj->timetag.month) << "month " << unsigned(obj->timetag.mday) << "day "
             << unsigned(obj->timetag.hour) << "hour " << unsigned(obj->timetag.min) << "min " << unsigned(obj->timetag.msec / 1000) << "sec "
             << unsigned(obj->timetag.msec % 1000) << "msec";
-        mLog.pushMsg(oss.str().c_str());
+        mLog.pushMsg(oss.str());
         break;
     case P_ME_NA_1:
         apducmd.start = START;
@@ -3291,7 +3298,7 @@ bool iec104_class::sendCommand(iec_obj* obj)
             << unsigned(obj->pop)
             << " LPC "
             << unsigned(obj->lpc);
-        mLog.pushMsg(oss.str().c_str());
+        mLog.pushMsg(oss.str());
         break;
     case P_ME_NB_1:
         apducmd.start = START;
@@ -3328,7 +3335,7 @@ bool iec104_class::sendCommand(iec_obj* obj)
             << unsigned(obj->pop)
             << " LPC "
             << unsigned(obj->lpc);
-        mLog.pushMsg(oss.str().c_str());
+        mLog.pushMsg(oss.str());
         break;
     case P_ME_NC_1:
         apducmd.start = START;
@@ -3365,7 +3372,7 @@ bool iec104_class::sendCommand(iec_obj* obj)
             << unsigned(obj->pop)
             << " LPC "
             << unsigned(obj->lpc);
-        mLog.pushMsg(oss.str().c_str());
+        mLog.pushMsg(oss.str());
         break;
     case P_AC_NA_1:
         apducmd.start = START;
@@ -3393,7 +3400,7 @@ bool iec104_class::sendCommand(iec_obj* obj)
             << short(obj->qpa)
             << " CA "
             << obj->ca;
-        mLog.pushMsg(oss.str().c_str());
+        mLog.pushMsg(oss.str());
         break;
     case C_CI_NA_1:
         apducmd.start = START;
@@ -3420,7 +3427,7 @@ bool iec104_class::sendCommand(iec_obj* obj)
             << unsigned(obj->address)
             << " FRZ " << unsigned(obj->frz)
             << " RQT " << unsigned(obj->value);
-        mLog.pushMsg(oss.str().c_str());
+        mLog.pushMsg(oss.str());
         break;
     case C_RD_NA_1:
         apducmd.start = START;
@@ -3443,7 +3450,7 @@ bool iec104_class::sendCommand(iec_obj* obj)
         oss.str("");
         oss << "     READ COMMAND, ADDRESS "
             << unsigned(obj->address);
-        mLog.pushMsg(oss.str().c_str());
+        mLog.pushMsg(oss.str());
         break;
     default:
         mLog.pushMsg("     COMMAND TYPE NOT IMPLEMENTED, NOT SENT");

@@ -1,22 +1,16 @@
 #pragma once
-
-#ifndef __IEC104_TYPES_H
 #include "iec104_types.h"
-#endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#define IEC_OBJECT_MAX	127
-#define IEC_TYPEID_LEN	3
 
 /* Information object */
 struct iec_object {
         unsigned short		ioa;	/* information object address */
         unsigned char		ioa2;	/* information object address */
 	union {
-                struct iec_type1	type1;
+        struct iec_type1	type1;
 		struct iec_type7	type7;
 		struct iec_type9	type9;
 		struct iec_type11	type11;
@@ -36,4 +30,3 @@ struct iec_object {
 
 #ifdef __cplusplus
 }
-#endif

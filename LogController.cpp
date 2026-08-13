@@ -36,9 +36,8 @@ LogController::LogController(iec104_log* logQueue, QPlainTextEdit* logUI, QObjec
 
 LogController::~LogController() = default;
 
-void LogController::copyToClipboard(bool checked)
+void LogController::copyToClipboard()
 {
-    Q_UNUSED(checked)
     QApplication::clipboard()->setText(m_logUI->toPlainText());
 }
 
@@ -48,20 +47,20 @@ void LogController::setLogState(bool state)
         m_logQueue->activateLog();
         auto d = QDate::currentDate();
         QString str = d.toString("yyyy.MM.dd") + QString(" Версия программы - ") + AppSettings::instance().VERSION;
-        m_logQueue->pushMsg(str.toStdString().c_str());
+        m_logQueue->pushMsg(str.toStdString());
     }
     else
         m_logQueue->deactivateLog();
 }
 
+void LogController::setLogLevel(bool state)
+{
+    m_logQueue->setLogLevel(state ? 0 : 2);
+}
+
 void LogController::setAutoScrollState(bool state)
 {
     m_autoScroll = state;
-}
-
-void LogController::setTrafficLogState(bool state)
-{
-    m_trafficLog = state;
 }
 
 void LogController::clear()
@@ -73,15 +72,12 @@ void LogController::slot_timerLogmsg()
 {
     static const int maxLogMsgsPerTick = 250;
 
-    if (m_logQueue->haveMsg()) {
-        // append the whole batch inside a single edit block: one layout/paint pass;
-        // the document's maximumBlockCount (set in the .ui) discards the oldest
-        // lines automatically once the log is full
+    if (m_logQueue->isNotEmpty()) {
         int logMsgsProcessed = 0;
         QTextCursor cur(m_logUI->document());
         cur.movePosition(QTextCursor::End);
         cur.beginEditBlock();
-        while (m_logQueue->haveMsg() && logMsgsProcessed < maxLogMsgsPerTick) {
+        while (m_logQueue->isNotEmpty() && logMsgsProcessed < maxLogMsgsPerTick) {
             const QString msg = QString::fromStdString(m_logQueue->pullMsg());
 
             QTextCharFormat fmt;

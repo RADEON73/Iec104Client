@@ -1,110 +1,88 @@
 #include "iec104_log.h"
 
 #include <ctime>
-#include <qmutex.h>
+#include <mutex>
+#include <queue>
 #include <string>
 
 iec104_log::iec104_log() = default;
 iec104_log::~iec104_log() = default;
 
-void iec104_log::setMaxMsg(unsigned int maxmsg)
-{
-    QMutexLocker locker(&mMutex);
-    mMaxMsg = maxmsg;
-}
-
-void iec104_log::setLevel(unsigned int level)
-{
-    QMutexLocker locker(&mMutex);
-    mLevel = level;
-}
-
 void iec104_log::activateLog()
 {
-    QMutexLocker locker(&mMutex);
-    mDoLog = true;
+    std::lock_guard<std::mutex> locker(m_mutex);
+    m_logOn = true;
 }
 
 void iec104_log::deactivateLog()
 {
-    QMutexLocker locker(&mMutex);
-    mLstLog.clear(); // clean lists
-    mLstTime.clear();
-    mDoLog = false;
+    std::lock_guard<std::mutex> locker(m_mutex);
+    std::queue<LogMessage>().swap(m_logQueue);
+    m_logOn = false;
 }
 
-void iec104_log::doLogTime()
+void iec104_log::setLogLevel(size_t logLevel)
 {
-    QMutexLocker locker(&mMutex);
-    mLstLog.clear(); // clean lists, sync
-    mLstTime.clear();
-    mRegTime = true;
+    std::lock_guard<std::mutex> locker(m_mutex);
+    m_logLevel = logLevel;
 }
 
-void iec104_log::dontLogTime()
+bool iec104_log::isEmpty()
 {
-    QMutexLocker locker(&mMutex);
-    mRegTime = false;
+    std::lock_guard<std::mutex> locker(m_mutex);
+    return !m_logQueue.empty();
 }
 
-bool iec104_log::haveMsg()
+bool iec104_log::isNotEmpty()
 {
-    QMutexLocker locker(&mMutex);
-    return !mLstLog.empty();
+    std::lock_guard<std::mutex> locker(m_mutex);
+    return !m_logQueue.empty();
 }
 
 bool iec104_log::isLogging()
 {
-    QMutexLocker locker(&mMutex);
-    return mDoLog;
+    std::lock_guard<std::mutex> locker(m_mutex);
+    return m_logOn;
 }
 
-// coloca a mensagem na fila
-void iec104_log::pushMsg( const char * msg, unsigned int level )
+void iec104_log::pushMsg(const std::string& msg, size_t logLevel)
 {
-    QMutexLocker locker(&mMutex);
-    if ( mDoLog && ( mLstLog.size() < mMaxMsg ) && ( mLevel <= level ) ) {
-        mLstLog.push_back( msg );
-        if ( mRegTime ) { // coloca hora na fila, se for o caso
-            mLstTime.push_back( time( NULL ) );
-        }
+    std::lock_guard<std::mutex> locker(m_mutex);
+    if (m_logOn && logLevel >= m_logLevel) {
+        LogMessage item{ msg, std::time(nullptr) };
+        m_logQueue.push(item);
     }
 }
 
-int iec104_log::count()
+size_t iec104_log::size()
 {
-    QMutexLocker locker(&mMutex);
-    return int(mLstLog.size());
+    std::lock_guard<std::mutex> locker(m_mutex);
+    return m_logQueue.size();
 }
 
-// Tira mensagem da fila
 std::string iec104_log::pullMsg()
 {
-    QMutexLocker locker(&mMutex);
-    if ( mLstLog.empty() || !mDoLog )
+    std::lock_guard<std::mutex> locker(m_mutex);
+
+    if (m_logQueue.empty() || !m_logOn)
         return "";
 
-    std::string s = mLstLog.front();   // pega a primeira da fila
-    mLstLog.pop_front();          // retira-a da fila
+    LogMessage msg = m_logQueue.front();
+    m_logQueue.pop();
 
-    // se tem registro de hora, pega a hora e formata para exibir antes da mensagem
-    if (mRegTime){
-        char buffer [201];
-        time_t hora = mLstTime.front();
-        mLstTime.pop_front();
-        if (hora != mLastTime)
-          {
-          struct tm * timeinfo;
-          timeinfo = localtime ( &hora );
-          // strftime ( buffer,200,"%d/%m %H:%M:%S ",timeinfo );
-          strftime ( buffer,200,"%H:%M:%S ",timeinfo );
-          s = buffer + s;
-          }
-        else
-          s = "         " + s;
-        mLastTime = hora;
+    std::string buffer;
+
+    time_t hora = msg.time;
+    if (hora != m_lastTime) {
+        struct tm* timeinfo = localtime(&hora);
+        strftime(buffer.data(), 200, "%H:%M:%S ", timeinfo);
+        msg.text = buffer + msg.text;
     }
+    //else
+        //msg.text = "         " + msg.text;
 
-    return s;
+    m_lastTime = hora;
+
+    return msg.text;
 }
 

@@ -1,11 +1,9 @@
 #pragma once
 #include <cstdint>
 #include <map>
-#include <qmetatype.h>
-#include <qvector.h>
 #include <string>
-#include "iec104_types.h"
 #include "iec104_log.h"
+#include "iec104_types.h"
 
 #pragma pack(push)
 #pragma pack(1) // byte aligned structures
@@ -66,9 +64,6 @@ struct iec_obj
 };
 
 #pragma pack(pop)
-
-Q_DECLARE_METATYPE(iec_obj)
-Q_DECLARE_METATYPE(QVector<iec_obj>)
 
 class iec104_class
 {
@@ -158,7 +153,7 @@ public:
     // connection
 
     void solicitGI(); // General Interrogation
-    void solicitInterrogation(char group = 20); // Group interrogation
+    void solicitInterrogation(uint8_t group = 20); // Group interrogation
     void setSecondaryIP(char* ip);
     void setSecondaryIP_backup(char* ip);
     char* getSecondaryIP();

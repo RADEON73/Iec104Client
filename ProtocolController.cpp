@@ -200,7 +200,7 @@ void ProtocolController::requestSendData(CommandData data)
     switch (obj.type) {
     case iec104_class::C_IC_NA_1: // Interrogation
         queueProtocolCall([group = data.leCmdValue.toInt()](QIec104* worker) {
-            worker->solicitInterrogation(static_cast<char>(group));
+            worker->solicitInterrogation(group);
             });
         return;
     case iec104_class::C_SC_NA_1:

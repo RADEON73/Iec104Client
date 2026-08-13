@@ -11,32 +11,45 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
+
 option(USE_STATIC_RUNTIME
     "Build with static runtime (/MT) instead of dynamic (/MD)"
     ON
 )
 
-if(USE_STATIC_RUNTIME)
-    set(QT_ROOT "$ENV{QT_ROOT_STATIC}")
-    set(QT_ROOT_NAME "QT_ROOT_STATIC")
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-    message(STATUS "Build with static runtime: ON")
-else()
-    set(QT_ROOT "$ENV{QT_ROOT_DYNAMIC}")
-    set(QT_ROOT_NAME "QT_ROOT_DYNAMIC")
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
-    message(STATUS "Build with static runtime: OFF")
-endif()
+if(WIN32)
+    option(USE_STATIC_RUNTIME
+        "Build with static runtime (/MT) instead of dynamic (/MD)"
+        ON
+    )
 
-if(QT_ROOT)
-    message(STATUS "${QT_ROOT_NAME} is set: ${QT_ROOT}")
-    list(PREPEND CMAKE_PREFIX_PATH
-        "${QT_ROOT}"
-    )
-else()
-    message(STATUS
-        "${QT_ROOT_NAME} is not set, using default Qt search"
-    )
+    if(USE_STATIC_RUNTIME)
+        set(QT_ROOT "$ENV{QT_ROOT_STATIC}")
+        set(QT_ROOT_NAME "QT_ROOT_STATIC")
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        message(STATUS "Build with static runtime: ON")
+    else()
+        set(QT_ROOT "$ENV{QT_ROOT_DYNAMIC}")
+        set(QT_ROOT_NAME "QT_ROOT_DYNAMIC")
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+        message(STATUS "Build with static runtime: OFF")
+    endif()
+#else()
+#    set(QT_ROOT "$ENV{QT_ROOT_DYNAMIC}")
+#    set(QT_ROOT_NAME "QT_ROOT_DYNAMIC")
+#    message(STATUS "Linux build: using dynamic Qt")
+#endif()
+
+	if(QT_ROOT)
+		message(STATUS "${QT_ROOT_NAME} is set: ${QT_ROOT}")
+		list(PREPEND CMAKE_PREFIX_PATH
+			"${QT_ROOT}"
+		)
+	else()
+		message(STATUS
+			"${QT_ROOT_NAME} is not set, using default Qt search"
+		)
+	endif()
 endif()
 
 find_package(Qt5 REQUIRED COMPONENTS
@@ -110,16 +123,14 @@ if(WIN32)
         WIN32_EXECUTABLE TRUE
         LINK_FLAGS "/SUBSYSTEM:WINDOWS"
     )
+	if(MSVC)
+		target_compile_options(${PROJECT_NAME} PRIVATE "/utf-8")
+		set_target_properties(${PROJECT_NAME} PROPERTIES
+			RC_OPTIONS "/l 0x0419"
+		)
+	endif()
+	set_target_properties(${PROJECT_NAME} PROPERTIES
+		VS_PLATFORM_TOOLSET "v142"
+		VS_WINDOWS_TARGET_PLATFORM_VERSION "10.0"
+	)
 endif()
-
-if(MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE "/utf-8")
-    set_target_properties(${PROJECT_NAME} PROPERTIES
-        RC_OPTIONS "/l 0x0419"
-    )
-endif()
-
-set_target_properties(${PROJECT_NAME} PROPERTIES
-    VS_PLATFORM_TOOLSET "v142"
-    VS_WINDOWS_TARGET_PLATFORM_VERSION "10.0"
-)
