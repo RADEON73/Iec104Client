@@ -63,9 +63,9 @@ set(SOURCES
     MainWindow.cpp
     SettingsDialog.cpp
     AppSettings.cpp
-    QIec104.cpp
+    Iec104TcpSocket.cpp
     LogController.cpp
-    ProtocolController.cpp
+    SocketManager.cpp
     model/TableCell.cpp
     model/TableRow.cpp
     model/TableModel.cpp
@@ -78,9 +78,9 @@ set(HEADERS
     MainWindow.h
     SettingsDialog.h
     AppSettings.h
-    QIec104.h
+    Iec104TcpSocket.h
     LogController.h
-    ProtocolController.h
+    SocketManager.h
     model/TableCell.h
     model/TableRow.h
     model/TableModel.h

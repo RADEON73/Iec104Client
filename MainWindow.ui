@@ -31,7 +31,10 @@
       <item>
        <widget class="QPushButton" name="pb_Connect">
         <property name="text">
-         <string>Подключить</string>
+         <string>Запустить</string>
+        </property>
+        <property name="checkable">
+         <bool>true</bool>
         </property>
        </widget>
       </item>

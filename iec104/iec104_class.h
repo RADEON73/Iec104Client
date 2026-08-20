@@ -142,22 +142,16 @@ public:
     static const unsigned int SELECT = 1;
     static const unsigned int EXECUTE = 0;
 
-    iec104_log mLog;
-
     // ---- user called funcions, must be called by the user -----------------
     iec104_class();         // user called constructor on derived class
+
     void onConnectTCP();    // user called, when tcp connected
     void onDisconnectTCP(); // user called, when tcp disconnected
     void onTimerSecond();   // user called, each second timer
     void packetReadyTCP();  // user called, when packet ready to be read from tcp
-    // connection
 
     void solicitGI(); // General Interrogation
     void solicitInterrogation(uint8_t group = 20); // Group interrogation
-    void setSecondaryIP(const std::string& ip);
-    void setSecondaryIP_backup(const std::string& ip);
-    std::string getSecondaryIP();
-    std::string getSecondaryIP_backup();
     void setSecondaryASDUAddress(int addr);
     void setSecondaryAddress(int addr);
     int getSecondaryAddress();
@@ -165,16 +159,31 @@ public:
     int getPrimaryAddress();
     void disableSequenceOrderCheck(); // allow sequence out of order
     bool sendCommand(iec_obj* obj);   // Command, return false if not send
-    int getPortTCP();
-    void setPortTCP(unsigned port);
-    int getPortTCP_backup();
-    void setPortTCP_backup(unsigned port);
-    void setGIPeriod(unsigned period);
 
+    void setGIPeriod(unsigned period);
     static std::string asduTiStr(int ti);
     static std::string causeStr(int cause);
 
+    std::string getIP() const { return m_ipAddress; }
+    void setIP(const std::string& ip) { m_ipAddress = ip; }
+    uint16_t getPort() const { return m_port; }
+    void setPort(uint16_t port) { m_port = port; }
+
+    std::string getIP_backup() const { return m_ipAddress_backup; }
+    void setIP_backup(const std::string& ip) { m_ipAddress_backup = ip; }
+    uint16_t getPort_backup() const { return m_port_backup; }
+    void setPort_backup(uint16_t port) { m_port_backup = port; }
+
+protected:
+    iec104_log mLog;
+
 private:
+    std::string m_ipAddress = "127.0.0.1"; // slave (secondary, main RTU) IP address
+    uint16_t m_port = 2404; // iec104 tcp port (main RTU defaults to 2404)
+
+    std::string m_ipAddress_backup = "127.0.0.1"; // slave (secondary, main RTU) IP address
+    uint16_t m_port_backup = 2404; // iec104 tcp port (main RTU defaults to 2404)
+
     static std::map<int, std::string> mapTiStr;
     static std::map<int, std::string> mapCauseStr;
 
@@ -196,10 +205,6 @@ private:
     unsigned char masterAddress; // master link address (primary address, originator address, oa)
     unsigned short slaveAddress; // slave link address (secondary address, common address of ASDU, ca)
     unsigned short slaveASDUAddrCmd; // common address of ASDU, ca for commands
-    unsigned int Port = 2404;                   // iec104 tcp port (main RTU defaults to 2404)
-    unsigned int Port_backup = 2404;            // iec104 tcp port (backup RTU defaults to 2404)
-    std::string slaveIP;                // slave (secondary, main RTU) IP address
-    std::string slaveIP_backup;         // slave (secondary, backup RTU) IP address
     static const int t3_testfr = 10;
     static const int t2_supervisory = 8;
     static const int t1_startdtact = 6;
@@ -223,7 +228,7 @@ protected:
     // wait milliseconds for data bytes
     virtual void waitBytes(int bytes, int msTout) = 0;
     // make tcp connection, user provided
-    virtual void connectTCP() = 0;
+    virtual void connectTCP(const std::string& ip, uint16_t port) = 0;
     // tcp disconnect, user provided
     virtual void disconnectTCP() = 0;
     // read tcp data, user provided

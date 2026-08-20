@@ -13,17 +13,20 @@
 #include <qnamespace.h>
 #include <qpalette.h>
 #include <qsortfilterproxymodel.h>
+#include <qstatusbar.h>
 #include <qstylefactory.h>
 #include <qwidget.h>
 #include "AppSettings.h"
 #include "LogController.h"
 #include "model/TableModel.h"
 #include "model/TableProxyModel.h"
-#include "ProtocolController.h"
 #include "SettingsDialog.h"
+#include "SocketManager.h"
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
-    ui(std::make_unique<Ui::MainWindow>())
+    ui(std::make_unique<Ui::MainWindow>()),
+    m_model(std::make_unique<TableModel>()),
+    m_socketManager(std::make_unique<SocketManager>())
 {
     ui->setupUi(this);
 
@@ -31,24 +34,19 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     settings.load();
 
     //Создаем модель
-    m_model = std::make_unique<TableModel>();
     m_model->setColumnCount(8);
     auto proxyModel = new TableProxyModel(ui->tv_Points);
     proxyModel->setSourceModel(m_model.get());
     ui->tv_Points->setModel(proxyModel);
     ui->tv_Points->horizontalHeader()->setSortIndicator(TableModel::PointColumn::Address, Qt::AscendingOrder);
 
-    //Создаем протокол
-    m_protocolController = std::make_unique<ProtocolController>();
-    connect(m_protocolController.get(), &ProtocolController::signal_stateChanged, 
-        this, &MainWindow::slot_stateChanged);
-    connect(m_protocolController.get(), &ProtocolController::signal_dataIndication,
+    connect(m_socketManager.get(), &SocketManager::signal_dataIndication,
         m_model.get(), &TableModel::slot_dataIndication);
-    connect(m_protocolController.get(), &ProtocolController::signal_commandActRespIndication, 
+    connect(m_socketManager.get(), &SocketManager::signal_commandActRespIndication,
         m_model.get(), &TableModel::slot_commandActRespIndication);
 
     //Создаем лог
-	m_logController = std::make_unique<LogController>(m_protocolController->logQueue(), ui->pte_LogData);
+	m_logController = std::make_unique<LogController>(m_socketManager->logQueue(), ui->pte_LogData);
 
     auto separator = []() {
         auto f = new QFrame;
@@ -70,53 +68,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     ui->splitter->setSizes( {1, 0} );
 }
 
-MainWindow::~MainWindow() = default;
-
-void MainWindow::slot_stateChanged(QAbstractSocket::SocketState state)
+MainWindow::~MainWindow()
 {
-	switch (state) {
-    case QAbstractSocket::ConnectedState:
-        m_model->clear();
-        m_lbStatus.setText("<font color='green'> Соединение установлено </font>");
-        ui->pb_PointsGI->setEnabled(true);
-        ui->pb_SendCommand->setEnabled(true);
-        ui->pb_Connect->setText("Отключить");
-        ui->pb_SettingsDialog->setEnabled(false);
-        break;
-	case QAbstractSocket::UnconnectedState:
-        m_lbStatus.setText("<font color='red'> Сокет не подключен </font>");
-        ui->pb_PointsGI->setEnabled(false);
-        ui->pb_SendCommand->setEnabled(false);
-        ui->pb_Connect->setText("Подключить");
-        ui->pb_SettingsDialog->setEnabled(true);
-		break;
-	case QAbstractSocket::HostLookupState:
-        m_lbStatus.setText("<font color='blue'> Выполняется DNS-разрешение имени </font>");
-        break;
-	case QAbstractSocket::ConnectingState:
-        m_lbStatus.setText("<font color='blue'> Идет установка TCP-соединения... </font>");
-        ui->pb_PointsGI->setEnabled(false);
-        ui->pb_SendCommand->setEnabled(false);
-        ui->pb_Connect->setText("Прервать");
-        ui->pb_SettingsDialog->setEnabled(false);
-        break;
-    case QAbstractSocket::BoundState:
-        m_lbStatus.setText("<font color='blue'> Состояние BoundState </font>");
-		break;
-    case QAbstractSocket::ListeningState:
-        m_lbStatus.setText("<font color='blue'> Соединение ListeningState </font>");
-		break;
-	case QAbstractSocket::ClosingState:
-        m_lbStatus.setText("<font color='blue'> Выполняется отключение... </font>");
-        ui->pb_PointsGI->setEnabled(false);
-        ui->pb_SendCommand->setEnabled(false);
-        ui->pb_Connect->setText("Закрытие сокета");
-        ui->pb_SettingsDialog->setEnabled(false);
-		break;
-	default:
-        m_lbStatus.setText("<font color='blue'> Соединение UNKNOWN </font>");
-		break;
-	}
+    m_socketManager->stop();
 }
 
 void MainWindow::on_cb_888Mode_stateChanged(int state)
@@ -133,14 +87,29 @@ void MainWindow::on_pb_SettingsDialog_clicked()
 {
     auto dlg = new SettingsDialog(this);
     dlg->setAttribute(Qt::WA_DeleteOnClose);
-    connect(dlg, &SettingsDialog::signal_settingsChanged, m_protocolController.get(), &ProtocolController::slot_reloadProtocolSettings);
     dlg->show();
 }
 
-void MainWindow::on_pb_Connect_clicked()
+void MainWindow::on_pb_Connect_clicked(bool checked)
 {
-    if (m_protocolController)
-        m_protocolController->requestConnect();
+    if (!m_socketManager)
+        return;
+
+    if (checked) { //Включаем
+        m_model->clear();
+        m_socketManager->start();
+        ui->pb_Connect->setText("Остановить");
+        ui->pb_PointsGI->setEnabled(true);
+        ui->pb_SendCommand->setEnabled(true);
+        ui->pb_SettingsDialog->setEnabled(false);
+    }
+    else {
+        m_socketManager->stop();
+        ui->pb_Connect->setText("Запустить");
+        ui->pb_PointsGI->setEnabled(false);
+        ui->pb_SendCommand->setEnabled(false);
+        ui->pb_SettingsDialog->setEnabled(true);
+    }
 }
 
 void MainWindow::on_cb_Theme_currentIndexChanged(int index)
@@ -176,8 +145,8 @@ void MainWindow::on_cb_Theme_currentIndexChanged(int index)
 
 void MainWindow::on_pb_PointsGI_clicked()
 {
-    if (m_protocolController)
-        m_protocolController->requestGI();
+    if (m_socketManager)
+        m_socketManager->requestGI();
 }
 
 void MainWindow::on_pb_PointsCopy_clicked()
@@ -188,7 +157,7 @@ void MainWindow::on_pb_PointsCopy_clicked()
 
 void MainWindow::on_pb_SendCommand_clicked()
 {
-    ProtocolController::CommandData data{};
+    SocketManager::CommandData data{};
     data.cb888Mode = ui->cb_888Mode->isChecked();
     data.leCmdAddressLow = ui->leCmdAddressLow->text();
     data.leCmdAddressMid = ui->leCmdAddressMid->text();
@@ -199,7 +168,7 @@ void MainWindow::on_pb_SendCommand_clicked()
     data.cbCmdDuration = ui->cbCmdDuration->currentText();
     data.leCmdValue = ui->leCmdValue->text();
     data.cbSBO = ui->cbSBO->isChecked();
-    m_protocolController->requestSendData(data);
+    m_socketManager->requestSendData(data);
 }
 
 void MainWindow::on_gb_LogOn_toggled(bool on)

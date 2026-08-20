@@ -181,54 +181,14 @@ void iec104_class::disableSequenceOrderCheck()
     seq_order_check = false;
 }
 
-int iec104_class::getPortTCP()
-{
-    return Port;
-}
-
 void iec104_class::setGIPeriod(unsigned period)
 {
     gi_period = int(period);
 }
 
-void iec104_class::setPortTCP(unsigned port)
-{
-    Port = port;
-}
-
-int iec104_class::getPortTCP_backup()
-{
-    return Port_backup;
-}
-
-void iec104_class::setPortTCP_backup(unsigned port)
-{
-    Port_backup = port;
-}
-
-void iec104_class::setSecondaryIP(const std::string& ip)
-{
-    slaveIP = ip;
-}
-
-void iec104_class::setSecondaryIP_backup(const std::string& ip)
-{
-    slaveIP_backup = ip;
-}
-
-std::string iec104_class::getSecondaryIP()
-{
-    return slaveIP;
-}
-
-std::string iec104_class::getSecondaryIP_backup()
-{
-    return slaveIP_backup;
-}
-
 void iec104_class::setSecondaryAddress(int addr)
 {
-    slaveAddress = static_cast<unsigned short>(addr);
+    slaveAddress = addr;
 }
 
 void iec104_class::setSecondaryASDUAddress(int addr)

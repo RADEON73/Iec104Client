@@ -12,9 +12,9 @@ namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
 
 class TableModel;
-class QIec104;
 class ProtocolController;
 class LogController;
+class SocketManager;
 
 class MainWindow : public QMainWindow
 {
@@ -26,7 +26,7 @@ public:
 
 private slots:
     void on_pb_SettingsDialog_clicked(); //Открывает диалог настройки подключения
-    void on_pb_Connect_clicked(); //Запускает цикл подключения к серверам
+    void on_pb_Connect_clicked(bool checked); //Запускает цикл подключения к серверам
     void on_cb_Theme_currentIndexChanged(int index); //При изменении темы приложения
 
     void on_pb_PointsGI_clicked(); //Запускает цикл общего опроса тегов
@@ -40,13 +40,11 @@ private slots:
     void on_pb_LogCopy_clicked(); //Копирует содержимое лога в буфер
     void on_cb_LogTraffic_toggled(bool on); //Включает скрывает отображение подробного лога траффика
 
-    void slot_stateChanged(QAbstractSocket::SocketState state); // State changed for iec104
-
 private:
     std::unique_ptr<Ui::MainWindow> ui;
 
     std::unique_ptr<TableModel> m_model;
-    std::unique_ptr<ProtocolController> m_protocolController;
+    std::unique_ptr<SocketManager> m_socketManager;
     std::unique_ptr<LogController> m_logController;
 
     QLabel m_lbStatus;
