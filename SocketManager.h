@@ -95,7 +95,7 @@ private:
     void switchToNextServer();
     void scheduleReconnect(int delayMs = 1000);
     void resetConnectionAttempts();
-    void onSocketDisconnectedForStop();
+    void shutdownProtocolThread();
 
     // Данные
     Iec104Socket* m_socket;

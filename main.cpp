@@ -15,7 +15,7 @@ int main(int argc, char* argv[])
     QApplication a(argc, argv);
     a.setWindowIcon(QIcon(":/icons/Iec104Client.png"));
     QNetworkProxy::setApplicationProxy(QNetworkProxy::NoProxy);
-    qRegisterMetaType<QAbstractSocket::SocketState>();
+    qRegisterMetaType<QAbstractSocket::SocketError>();
     qRegisterMetaType<iec_obj>("iec_obj");
     qRegisterMetaType<QVector<iec_obj>>("QVector<iec_obj>");
     MainWindow w;

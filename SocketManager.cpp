@@ -46,9 +46,10 @@ SocketManager::SocketManager(QObject* parent)
 
 SocketManager::~SocketManager()
 {
-    stop();
-    m_protocolThread.quit();
-    m_protocolThread.wait();
+    m_stopRequested = true;
+    m_reconnectTimer->stop();
+
+    shutdownProtocolThread();
 }
 
 void SocketManager::start()
@@ -58,8 +59,6 @@ void SocketManager::start()
     m_primaryServer = ServerConfig{s.IpAddress, s.TcpPort};
     m_backupServer = ServerConfig{ s.IpAddressReserve, s.TcpPortReserve };
     m_hasBackupServer = (s.IpAddressReserve != "0.0.0.0");
-
-    requestUpdate();
 
     if (m_state != State::Idle) {
         qDebug() << "SocketManager: Already running";
@@ -73,42 +72,28 @@ void SocketManager::start()
 
     m_stopRequested = false;
     m_connectionAttempts = 0;
-    m_state = State::Connecting;
     m_currentServer = ServerType::Primary;
+    m_state = State::Connecting;
+
+    requestUpdate();
 
     qDebug() << "SocketManager: Starting connection to primary server";
+
     connectTo(ServerType::Primary);
 }
 
 void SocketManager::stop()
 {
+    if (m_stopRequested && m_state == State::Idle)
+        return;
+
     qDebug() << "SocketManager: Stop requested";
+
+    m_state = State::Idle;
     m_stopRequested = true;
     m_reconnectTimer->stop();
 
-    // Переносим логику в поток сокета
-    QMetaObject::invokeMethod(this, [this]() {
-        // Теперь мы в правильном потоке
-        if (m_socket->state() == QAbstractSocket::ConnectedState) {
-            // Подключаем сигнал о завершении
-            connect(m_socket, &QAbstractSocket::disconnected, this, &SocketManager::onSocketDisconnectedForStop);
-            m_socket->onDisconnectTCP();
-        }
-        else {
-            // Сразу завершаем
-            m_socket->abort();
-            onSocketDisconnectedForStop(); // Вызовем финализацию
-        }
-        }, Qt::QueuedConnection);
-}
-
-void SocketManager::onSocketDisconnectedForStop()
-{
-    // Отключаем временное соединение
-    disconnect(m_socket, &QAbstractSocket::disconnected, this, &SocketManager::onSocketDisconnectedForStop);
-
-    m_state = State::Idle;
-    emit stopped();
+    requestAbort();
 }
 
 void SocketManager::reconnect()
@@ -117,11 +102,9 @@ void SocketManager::reconnect()
         start();
         return;
     }
-
     qDebug() << "SocketManager: Manual reconnect requested";
     m_reconnectTimer->stop();
     requestAbort();
-    // Дальше логика пойдет через onSocketDisconnected
 }
 
 iec104_log* SocketManager::logQueue()
@@ -207,9 +190,8 @@ void SocketManager::switchToNextServer()
 
 void SocketManager::scheduleReconnect(int delayMs)
 {
-    if (m_stopRequested) {
+    if (m_stopRequested)
         return;
-    }
 
     m_state = State::Reconnecting;
     qDebug() << QString("SocketManager: Scheduling reconnect in %1 ms").arg(delayMs);
@@ -221,19 +203,42 @@ void SocketManager::resetConnectionAttempts()
     m_connectionAttempts = 0;
 }
 
+void SocketManager::shutdownProtocolThread()
+{
+    if (!m_protocolThread.isRunning())
+        return;
+
+    QMetaObject::invokeMethod(
+        m_socket,
+        [socket = m_socket]() {
+            socket->abort();
+        },
+        Qt::BlockingQueuedConnection
+    );
+
+    m_protocolThread.quit();
+    m_protocolThread.wait();
+}
+
 void SocketManager::onSocketConnected()
 {
     if (m_stopRequested) {
-        qDebug() << "SocketManager: Connected but stop requested, disconnecting";
-        requestDisconnect();
+        qDebug() << "SocketManager: Connected but stop requested";
+        requestAbort();
         return;
     }
 
     m_state = State::Connected;
     m_connectionAttempts = 0;
 
-    QString serverName = (m_currentServer == ServerType::Primary) ? "Primary" : "Backup";
-    qDebug() << QString("SocketManager: Connected to %1 server").arg(serverName);
+    const QString serverName =
+        (m_currentServer == ServerType::Primary)
+        ? "Primary"
+        : "Backup";
+
+    qDebug()
+        << QString("SocketManager: Connected to %1 server")
+        .arg(serverName);
 
     emit connected(m_currentServer);
 }
@@ -242,47 +247,34 @@ void SocketManager::onSocketDisconnected()
 {
     qDebug() << "SocketManager: Disconnected";
 
-    // Если мы были в Connected - сообщаем об отключении
-    if (m_state == State::Connected) {
+    if (m_state == State::Connected)
         emit disconnected();
-    }
 
-    // Если стоп запрошен - переходим в Idle
     if (m_stopRequested) {
         m_state = State::Idle;
         emit stopped();
         return;
     }
 
-    // Иначе пробуем переподключиться
     switchToNextServer();
 }
 
 void SocketManager::onSocketError(QAbstractSocket::SocketError error)
 {
-    // Если ошибка произошла во время подключения
+    Q_UNUSED(error);
+
+    if (m_stopRequested)
+        return;
+
     if (m_state == State::Connecting) {
-        // Сокет уже закрыт, просто переключаемся
-        // Не ждем disconnected, т.к. его не будет
+        qDebug() << "SocketManager: Connection error";
         switchToNextServer();
         return;
     }
 
-    // Если ошибка во время работы (Connected)
     if (m_state == State::Connected) {
-        // Сокет еще жив, но мы уже получили ошибку
-        // Ждем disconnected (он придет следом)
-        // Если не придет - таймер подстрахует
-        QTimer::singleShot(3000, this, [this]() {
-            if (m_state == State::Connected) {
-                qDebug() << "SocketManager: Disconnected timeout, forcing abort";
-                requestAbort();
-                // onSocketDisconnected вызовется?
-                // Нет! abort() не вызывает disconnected
-                // Поэтому вызываем вручную
-                onSocketDisconnected();
-            }
-            });
+        qDebug() << "SocketManager: Socket error while connected";
+        requestAbort();
     }
 }
 
@@ -308,14 +300,21 @@ void SocketManager::requestUpdate()
     const auto giPeriod = s.GIperiod;
 
     QMetaObject::invokeMethod(m_socket,
-        [=]() {
-            m_socket->setIP(ip);
-            m_socket->setPort(port);
-            m_socket->setIP_backup(backupIp);
-            m_socket->setPort_backup(backupPort);
-            m_socket->setSecondaryAddress(ca);
-            m_socket->setPrimaryAddress(oa);
-            m_socket->setGIPeriod(giPeriod);
+        [socket = m_socket,
+        ip,
+        port,
+        backupIp,
+        backupPort,
+        ca,
+        oa,
+        giPeriod]() {
+            socket->setIP(ip);
+            socket->setPort(port);
+            socket->setIP_backup(backupIp);
+            socket->setPort_backup(backupPort);
+            socket->setSecondaryAddress(ca);
+            socket->setPrimaryAddress(oa);
+            socket->setGIPeriod(giPeriod);
         },
         Qt::QueuedConnection);
 }
@@ -323,38 +322,35 @@ void SocketManager::requestUpdate()
 void SocketManager::requestConnect(QString ip, quint16 port)
 {
     QMetaObject::invokeMethod(m_socket,
-        [=]() {
-            m_socket->connectTCP(ip.toStdString(), port);
+        [socket = m_socket, ip = std::move(ip), port]() {
+            socket->connectTCP(ip.toStdString(), port);
         },
         Qt::QueuedConnection);
 }
 
 void SocketManager::requestDisconnect()
 {
-    QMetaObject::invokeMethod(
-        m_socket,
-        [this]() {
-            m_socket->disconnectTCP();
+    QMetaObject::invokeMethod(m_socket,
+        [socket = m_socket]() {
+            socket->disconnectTCP();
         },
         Qt::QueuedConnection);
 }
 
 void SocketManager::requestAbort()
 {
-    QMetaObject::invokeMethod(
-        m_socket,
-        [this]() {
-            m_socket->abort();
+    QMetaObject::invokeMethod(m_socket,
+        [socket = m_socket]() {
+            socket->abort();
         },
-        Qt::QueuedConnection);
+        Qt::BlockingQueuedConnection);
 }
 
 void SocketManager::requestGI()
 {
-    QMetaObject::invokeMethod(
-        m_socket,
-        [this]() {
-            m_socket->solicitGI();
+    QMetaObject::invokeMethod(m_socket,
+        [socket = m_socket]() {
+            socket->solicitGI();
         },
         Qt::QueuedConnection);
 }
@@ -436,8 +432,8 @@ void SocketManager::requestSendData(CommandData data)
     obj.ca = data.leASDUAddr.toUShort();
 
     QMetaObject::invokeMethod(m_socket,
-        [=]() { 
-            m_socket->setSecondaryASDUAddress(obj.ca); 
+        [socket = m_socket, qoi = obj.ca]() {
+            socket->setSecondaryASDUAddress(qoi);
         },
         Qt::QueuedConnection);
 
@@ -547,8 +543,9 @@ void SocketManager::requestSendData(CommandData data)
     obj.se = static_cast<unsigned char>(data.cbSBO);
 
     QMetaObject::invokeMethod(m_socket,
-        [=]() mutable {
-            m_socket->sendCommand(&obj);
+        [socket = m_socket, obj]() mutable {
+            auto command = obj;
+            socket->sendCommand(&command);
         },
         Qt::QueuedConnection);
 }
