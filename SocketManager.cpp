@@ -2,7 +2,6 @@
 
 #include <AppSettings.h>
 #include <cstdint>
-#include <functional>
 #include <qabstractsocket.h>
 #include <qdatetime.h>
 #include <qlogging.h>
@@ -12,32 +11,57 @@
 #include <qregularexpression.h>
 #include <qstring.h>
 #include <qstringlist.h>
+#include <qtcpsocket.h>
+#include <qthread.h>
 #include <qtimer.h>
 #include "iec104/iec104_class.h"
-#include "Iec104TcpSocket.h"
-#include <qthread.h>
 #include "iec104/iec104_log.h"
+#include "Iec104TcpSocket.h"
+
+constexpr auto PRIMARY_CHECK_INTERVAL = 5000;
 
 SocketManager::SocketManager(QObject* parent)
     : QObject(parent)
     , m_socket(new Iec104Socket())
     , m_reconnectTimer(new QTimer(this))
+    , m_primaryChecker(new QTcpSocket(this))
+    , m_primaryCheckTimer(new QTimer(this))
 {
     m_reconnectTimer->setSingleShot(true);
 
-    // Подключаем сигналы сокета
-    connect(m_socket, &Iec104Socket::connected, this, &SocketManager::onSocketConnected);
-    connect(m_socket, &Iec104Socket::disconnected, this, &SocketManager::onSocketDisconnected);
-    connect(m_socket, &Iec104Socket::errorOccurred, this, &SocketManager::onSocketError);
+    m_primaryCheckTimer->setSingleShot(false);
+    m_primaryCheckTimer->setInterval(PRIMARY_CHECK_INTERVAL);
 
-    connect(m_socket, &Iec104Socket::signal_dataIndication, this, &SocketManager::signal_dataIndication);
-    connect(m_socket, &Iec104Socket::signal_interrogationActConfIndication, this, &SocketManager::signal_interrogationActConfIndication);
-    connect(m_socket, &Iec104Socket::signal_interrogationActTermIndication, this, &SocketManager::signal_interrogationActTermIndication);
-    connect(m_socket, &Iec104Socket::signal_commandActRespIndication, this, &SocketManager::signal_commandActRespIndication);
-    connect(m_socket, &Iec104Socket::signal_userprocAPDU, this, &SocketManager::signal_userprocAPDU);
+    // Подключаем сигналы сокета
+    connect(m_socket, &Iec104Socket::connected, 
+        this, &SocketManager::onSocketConnected);
+    connect(m_socket, &Iec104Socket::disconnected, 
+        this, &SocketManager::onSocketDisconnected);
+    connect(m_socket, &Iec104Socket::errorOccurred, 
+        this, &SocketManager::onSocketError);
+
+    connect(m_socket, &Iec104Socket::signal_dataIndication, 
+        this, &SocketManager::signal_dataIndication);
+    connect(m_socket, &Iec104Socket::signal_interrogationActConfIndication, 
+        this, &SocketManager::signal_interrogationActConfIndication);
+    connect(m_socket, &Iec104Socket::signal_interrogationActTermIndication, 
+        this, &SocketManager::signal_interrogationActTermIndication);
+    connect(m_socket, &Iec104Socket::signal_commandActRespIndication, 
+        this, &SocketManager::signal_commandActRespIndication);
+    connect(m_socket, &Iec104Socket::signal_userprocAPDU, 
+        this, &SocketManager::signal_userprocAPDU);
 
     // Таймер для переподключения
     connect(m_reconnectTimer, &QTimer::timeout, this, &SocketManager::onReconnectTimer);
+
+    connect(m_primaryCheckTimer, &QTimer::timeout,
+        this, &SocketManager::onPrimaryCheckTimeout);
+    connect(m_primaryChecker, &QTcpSocket::connected,
+        this, &SocketManager::onPrimaryCheckerConnected);
+    connect(m_primaryChecker, &QTcpSocket::disconnected,
+        this, &SocketManager::onPrimaryCheckerDisconnected);
+    connect(m_primaryChecker, &QTcpSocket::errorOccurred,
+        this, &SocketManager::onPrimaryCheckerError);
 
     m_socket->moveToThread(&m_protocolThread);
     connect(&m_protocolThread, &QThread::finished, m_socket, &QObject::deleteLater);
@@ -56,7 +80,7 @@ void SocketManager::start()
 {
     auto& s = AppSettings::instance();
 
-    m_primaryServer = ServerConfig{s.IpAddress, s.TcpPort};
+    m_primaryServer = ServerConfig{ s.IpAddress, s.TcpPort };
     m_backupServer = ServerConfig{ s.IpAddressReserve, s.TcpPortReserve };
     m_hasBackupServer = (s.IpAddressReserve != "0.0.0.0");
 
@@ -71,9 +95,13 @@ void SocketManager::start()
     }
 
     m_stopRequested = false;
+    m_switchingToPrimary = false;
+
     m_connectionAttempts = 0;
     m_currentServer = ServerType::Primary;
     m_state = State::Connecting;
+
+    stopPrimaryChecker();
 
     requestUpdate();
 
@@ -91,7 +119,11 @@ void SocketManager::stop()
 
     m_state = State::Idle;
     m_stopRequested = true;
+    m_switchingToPrimary = false;
+
     m_reconnectTimer->stop();
+
+    stopPrimaryChecker();
 
     requestAbort();
 }
@@ -124,15 +156,15 @@ SocketManager::ServerType SocketManager::currentServer() const
 
 void SocketManager::connectTo(ServerType server)
 {
-    if (m_stopRequested) {
-        qDebug() << "SocketManager: Stop requested, aborting connection";
+    if (m_stopRequested)
         return;
-    }
 
     ServerConfig config;
     QString serverName;
 
     if (server == ServerType::Primary) {
+        stopPrimaryChecker();
+
         config = m_primaryServer;
         serverName = "Primary";
     }
@@ -142,6 +174,7 @@ void SocketManager::connectTo(ServerType server)
             emit errorOccurred("No backup server configured");
             return;
         }
+
         config = m_backupServer;
         serverName = "Backup";
     }
@@ -164,7 +197,7 @@ void SocketManager::switchToNextServer()
     m_connectionAttempts++;
 
     // Если слишком много попыток к одному серверу - переключаемся
-    const int MAX_ATTEMPTS = 3;
+    const int MAX_ATTEMPTS = 1;
 
     if (m_currentServer == ServerType::Primary && m_connectionAttempts >= MAX_ATTEMPTS) {
         if (m_hasBackupServer) {
@@ -194,7 +227,8 @@ void SocketManager::scheduleReconnect(int delayMs)
         return;
 
     m_state = State::Reconnecting;
-    qDebug() << QString("SocketManager: Scheduling reconnect in %1 ms").arg(delayMs);
+    qDebug() << QString("SocketManager: Scheduling reconnect in %1 ms")
+        .arg(delayMs);
     m_reconnectTimer->start(delayMs);
 }
 
@@ -220,6 +254,90 @@ void SocketManager::shutdownProtocolThread()
     m_protocolThread.wait();
 }
 
+void SocketManager::startPrimaryChecker()
+{
+    if (m_stopRequested)
+        return;
+
+    if (m_currentServer != ServerType::Backup)
+        return;
+
+    if (!m_primaryCheckTimer->isActive()) {
+        qDebug() << "SocketManager: Starting primary server checker";
+
+        // Проверяем сразу, не ждём первые 5 секунд
+        checkPrimaryServer();
+
+        // Далее проверяем периодически
+        m_primaryCheckTimer->start();
+    }
+}
+
+void SocketManager::stopPrimaryChecker()
+{
+    m_primaryCheckTimer->stop();
+
+    if (m_primaryChecker->state() != QAbstractSocket::UnconnectedState) {
+        m_primaryChecker->abort();
+    }
+}
+
+void SocketManager::checkPrimaryServer()
+{
+    if (m_stopRequested)
+        return;
+
+    if (m_currentServer != ServerType::Backup)
+        return;
+
+    if (m_state != State::Connected)
+        return;
+
+    if (m_primaryChecker->state() != QAbstractSocket::UnconnectedState) {
+        return;
+    }
+
+    qDebug() << "SocketManager: Checking primary server"
+        << m_primaryServer.host
+        << m_primaryServer.port;
+
+    m_primaryChecker->connectToHost(
+        m_primaryServer.host,
+        m_primaryServer.port
+    );
+}
+
+void SocketManager::switchFromBackupToPrimary()
+{
+    if (m_stopRequested)
+        return;
+
+    if (m_currentServer != ServerType::Backup)
+        return;
+
+    if (m_state != State::Connected)
+        return;
+
+    if (m_switchingToPrimary)
+        return;
+
+    m_switchingToPrimary = true;
+
+    qDebug() << "SocketManager: Switching from Backup to Primary";
+
+    // Теперь целевой сервер — Primary.
+    m_currentServer = ServerType::Primary;
+    m_connectionAttempts = 0;
+
+    // Очень важно:
+    // меняем state ДО abort(), потому что abort вызовет
+    // disconnected(), который придёт обратно в onSocketDisconnected().
+    m_state = State::Connecting;
+
+    // Разрываем рабочий IEC-104 канал с Backup.
+    requestAbort();
+}
+
 void SocketManager::onSocketConnected()
 {
     if (m_stopRequested) {
@@ -236,9 +354,15 @@ void SocketManager::onSocketConnected()
         ? "Primary"
         : "Backup";
 
-    qDebug()
-        << QString("SocketManager: Connected to %1 server")
+    qDebug() << QString("SocketManager: Connected to %1 server")
         .arg(serverName);
+
+    if (m_currentServer == ServerType::Backup)
+        startPrimaryChecker();
+    else
+        stopPrimaryChecker();
+
+    requestGI();
 
     emit connected(m_currentServer);
 }
@@ -251,8 +375,24 @@ void SocketManager::onSocketDisconnected()
         emit disconnected();
 
     if (m_stopRequested) {
+        stopPrimaryChecker();
+
         m_state = State::Idle;
         emit stopped();
+        return;
+    }
+
+    // Специальный случай:
+    // мы сами отключили Backup, потому что Primary снова доступен.
+    if (m_switchingToPrimary) {
+        qDebug() << "SocketManager: Backup disconnected, connecting to Primary";
+
+        m_switchingToPrimary = false;
+
+        m_currentServer = ServerType::Primary;
+        m_connectionAttempts = 0;
+
+        connectTo(ServerType::Primary);
         return;
     }
 
@@ -285,6 +425,31 @@ void SocketManager::onReconnectTimer()
     if (m_state != State::Reconnecting)
         return;
     connectTo(m_currentServer);
+}
+
+void SocketManager::onPrimaryCheckerConnected()
+{
+    qDebug() << "SocketManager: Primary server is available!";
+    // Checker нам больше не нужен.
+    m_primaryChecker->disconnectFromHost();
+    m_primaryCheckTimer->stop();
+    switchFromBackupToPrimary();
+}
+
+void SocketManager::onPrimaryCheckerDisconnected()
+{
+    qDebug() << "SocketManager: Primary checker disconnected";
+}
+
+void SocketManager::onPrimaryCheckerError(QAbstractSocket::SocketError error)
+{
+    Q_UNUSED(error);
+    qDebug() << "SocketManager: Primary checker:" << m_primaryChecker->errorString();
+}
+
+void SocketManager::onPrimaryCheckTimeout()
+{
+    checkPrimaryServer();
 }
 
 void SocketManager::requestUpdate()

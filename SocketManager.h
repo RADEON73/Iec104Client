@@ -81,6 +81,11 @@ private slots:
     void onSocketError(QAbstractSocket::SocketError error);
     void onReconnectTimer();
 
+    void onPrimaryCheckerConnected();
+    void onPrimaryCheckerDisconnected();
+    void onPrimaryCheckerError(QAbstractSocket::SocketError error);
+    void onPrimaryCheckTimeout();
+
 private:
     enum class State
     {
@@ -97,9 +102,20 @@ private:
     void resetConnectionAttempts();
     void shutdownProtocolThread();
 
+    void startPrimaryChecker();
+    void stopPrimaryChecker();
+    void checkPrimaryServer();
+    void switchFromBackupToPrimary();
+
+private:
     // Данные
-    Iec104Socket* m_socket;
-    QTimer* m_reconnectTimer;
+    Iec104Socket* m_socket = nullptr;
+    QTimer* m_reconnectTimer = nullptr;
+
+    QTcpSocket* m_primaryChecker = nullptr;
+    QTimer* m_primaryCheckTimer = nullptr;
+
+    bool m_switchingToPrimary = false;
 
     ServerConfig m_primaryServer;
     ServerConfig m_backupServer;
